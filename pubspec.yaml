@@ -1,0 +1,57 @@
+name: xupertb_app
+description: XuperTV - New Flutter multiplatform IPTV app scaffold
+publish_to: 'none'
+version: 0.1.0
+
+environment:
+  sdk: ">=2.18.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.5
+  flutter_riverpod: ^2.3.4
+  dio: ^5.1.2
+  video_player: ^2.6.0
+  flutter_secure_storage: ^9.0.0
+  hive: ^2.2.3
+  hive_flutter: ^1.1.0
+  # m3u parsing implemented in `lib/utils/m3u_parser.dart` (local helper)
+  flutter_dotenv: ^5.0.2
+  xml: ^6.6.1
+  shared_preferences: ^2.5.4
+  google_fonts: ^8.0.1
+  better_player_plus: ^1.1.5
+  flutter_vlc_player: ^7.4.4
+  
+  # Windows/Desktop video player
+  media_kit: ^1.1.10
+  media_kit_video: ^1.2.4
+  media_kit_libs_windows_video: ^1.0.9
+  
+  url_launcher: ^6.3.2
+  path_provider: ^2.1.3
+  permission_handler: ^11.3.1
+  cached_network_image: ^3.3.0
+  flutter_svg: ^2.0.10
+  # better_player_plus is native-only; excluded from web builds. Use platform-specific
+  # conditional imports and add this package back for native targets if needed.
+
+  path: any
+  intl: any
+  scrollable_positioned_list: ^0.3.8
+  equatable: ^2.0.5
+  # Google Generative AI (Gemini) SDK for Flutter
+  google_generative_ai: any
+  webview_flutter: ^4.13.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^2.0.0
+  flutter_launcher_icons: ^0.13.1
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/
