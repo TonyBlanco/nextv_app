@@ -27,7 +27,11 @@ secrets.json
 *.apk
 *.aab
 *.ipa
-webos/
+
+# WebOS build output (keep source)
+webos/main.dart.js
+webos/flutter*.js
+webos/canvaskit/
 
 # Legacy (do not recreate)
 *_legacy.*
