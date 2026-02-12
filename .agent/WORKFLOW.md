@@ -2,9 +2,18 @@
 
 ## Agent Roles
 
-### 🏗️ Architect Agent (Primary)
+### 🏗️ Architect Agent (Claude Opus 4.5)
+**Role:** Primary architect who receives user ideas and designs complete architecture
+
+**Workflow:**
+1. **User provides idea** → "I want feature X"
+2. **Architect (Opus 4.5) designs** → Creates architecture, plans implementation
+3. **Architect delegates** → Assigns tasks to specialist agents
+4. **Architect validates** → Reviews all changes before commit
+
 **Responsibilities:**
-- Design system architecture
+- Design system architecture from user ideas
+- Create implementation plans
 - Review all changes
 - Delegate tasks to specialist agents
 - Ensure no duplicates
@@ -77,22 +86,27 @@
 
 ## Workflow Pattern
 
-### 1. Architect Reviews Request
+### 1. User Provides Idea
 ```
-User Request → Architect Analysis → Task Breakdown
-```
-
-### 2. Architect Delegates
-```
-Task → Identify Specialist → Delegate with Context
+User: "I want feature X"
 ```
 
-### 3. Specialist Executes
+### 2. Architect (Opus 4.5) Designs Architecture
+```
+Architect Analysis → Design Architecture → Create Implementation Plan
+```
+
+### 3. Architect Delegates
+```
+Task Breakdown → Identify Specialist → Delegate with Context
+```
+
+### 4. Specialist Executes
 ```
 Receive Task → Check Skills → Implement → Report Back
 ```
 
-### 4. Architect Validates
+### 5. Architect Validates
 ```
 Review Changes → Ensure Quality → Approve/Request Changes
 ```
@@ -213,20 +227,34 @@ Before implementing, agents must:
 
 ## Example Workflow
 
-### User Request: "Add live channel indicators"
+### User Idea: "Add live channel indicators"
 
-**Step 1: Architect Analysis**
+**Step 1: User Provides Idea**
 ```
-Task: Implement live channel indicators
+User: "I want to show which channels are currently live"
+```
+
+**Step 2: Architect (Opus 4.5) Designs Architecture**
+```
+Analysis:
+- Need real-time channel status checking
+- UI badge to show LIVE state
+- Integration with existing channel list
+
+Architecture Design:
+- Service: ChannelStatusService (polls channel status)
+- Widget: LiveBadge (animated indicator)
+- Integration: Update ChannelListEntry
+
 Complexity: Medium
 Agents Needed: UI/UX + Backend
 Estimated Time: 2 hours
 ```
 
-**Step 2: Task Breakdown**
+**Step 3: Task Breakdown**
 ```
-1. Backend: Add channel status check service
-2. UI/UX: Design LIVE badge widget
+1. Backend: Create ChannelStatusService
+2. UI/UX: Design LiveBadge widget
 3. UI/UX: Integrate badge into channel list
 4. Testing: Test with real channels
 ```
