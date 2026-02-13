@@ -1,0 +1,5 @@
+{
+  "dependencies": {
+    "@webosose/ares-cli": "^2.4.0"
+  }
+}

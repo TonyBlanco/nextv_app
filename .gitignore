@@ -37,3 +37,4 @@ webos/canvaskit/
 *_legacy.*
 *_old.*
 *_backup.*
+node_modules/

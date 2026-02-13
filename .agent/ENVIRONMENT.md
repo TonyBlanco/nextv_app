@@ -1,37 +1,40 @@
-# NeXtv Development Environment
+# NeXtv Development Environment (macOS)
 
 ## SDK & Tools Configuration
 
-### Android SDK
-```
-ANDROID_HOME=C:\Users\luisb\AppData\Local\Android\Sdk
-ANDROID_SDK_ROOT=C:\Users\luisb\AppData\Local\Android\Sdk
-```
-
-**Tools:**
-- Platform Tools: `C:\platform-tools\`
-- ADB: `C:\platform-tools\adb.exe`
-- Emulator: BlueStacks (127.0.0.1:5555)
-
 ### Flutter SDK
-```
-FLUTTER_ROOT=C:\src\flutter
-FLUTTER_BIN=C:\src\flutter\bin\flutter.bat
+```bash
+FLUTTER_ROOT=/Users/luisblancofontela/.gemini/antigravity/scratch/flutter_sdk
+PATH=$PATH:$FLUTTER_ROOT/bin
 ```
 
-### WebOS Development
-- **Emulator:** Available
-- **Developer Mode:** Enabled
-- **CLI:** `npm install -g @webosose/ares-cli`
-- **Deploy:** `ares-install` or ADB
+**Version:** Flutter 3.41.0 (stable)  
+**Dart:** 3.11.0
+
+### CocoaPods (iOS/macOS development)
+```bash
+GEM_HOME=$HOME/.gem/ruby/2.6.0
+PATH=$PATH:$GEM_HOME/bin
+```
+
+**Note:** CocoaPods requires Xcode to be fully installed.
 
 ---
 
 ## Project Paths
 
+```bash
+PROJECT_ROOT=/Volumes/Untitled/NEXTV APP
 ```
-PROJECT_ROOT=D:\NEXTV APP
-LEGACY_BACKUP=d:\IPTV Xuper\XUPERTB_ANDROID
+
+---
+
+## Quick Setup
+
+Run this in your terminal to configure the environment:
+
+```bash
+source scripts/setup_mac.sh
 ```
 
 ---
@@ -44,55 +47,73 @@ flutter build apk --release
 # Output: build/app/outputs/flutter-apk/app-release.apk
 ```
 
-### WebOS
+### iOS (requires Xcode)
+```bash
+flutter build ios --release
+```
+
+### macOS (requires Xcode)
+```bash
+flutter build macos --release
+```
+
+### Web
 ```bash
 flutter build web --release
-cp -r build/web/* webos/
-ares-install webos/
-```
-
-### Windows
-```bash
-flutter build windows --release
+# Output: build/web
 ```
 
 ---
 
-## Emulators
+## Development Tools
 
-### BlueStacks (Android)
+### Check Flutter Setup
 ```bash
-adb connect 127.0.0.1:5555
-adb devices
+flutter doctor -v
 ```
 
-### WebOS Emulator
+### Get Dependencies
 ```bash
-ares-setup-device
-ares-install --device <name> app.apk
+flutter pub get
+```
+
+### Analyze Code
+```bash
+flutter analyze
+```
+
+### Run Tests
+```bash
+flutter test
 ```
 
 ---
 
-## Dependencies
+## Platform Requirements
 
-**Total:** 155 packages  
-**Status:** ✅ Installed  
-**Update:** `flutter pub get`
+### ✅ Already Configured
+- Flutter SDK (3.41.0)
+- Dart SDK (3.11.0)
+- Command Line Tools for Xcode
+- Android SDK (partial)
 
----
+### ⚠️ Manual Setup Required
+1. **Xcode** (for iOS/macOS builds)
+   - Install from App Store
+   - Run: `sudo xcode-select --switch /Applications/Xcode.app/Contents/Developer`
+   - Run: `sudo xcodebuild -runFirstLaunch`
 
-## Git
+2. **Android Licenses**
+   - Run: `flutter doctor --android-licenses`
 
-**Repository:** D:\NEXTV APP\.git  
-**Remote:** (to be configured)  
-**Branch:** main
+3. **CocoaPods** (after Xcode installation)
+   - Run: `brew install cocoapods`
+   - Or: `sudo gem install cocoapods`
 
 ---
 
 ## Notes
 
-- All paths use absolute references
-- SDKs configured in system PATH
-- WebOS developer access enabled
-- Legacy project preserved as backup
+- Flutter SDK is shared across all projects
+- Always run `source scripts/setup_mac.sh` in new terminal sessions
+- For persistent PATH, add Flutter to your `~/.zshrc`

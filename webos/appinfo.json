@@ -1,19 +1,16 @@
 {
-    "id": "com.nextv.iptv",
-    "version": "2.0.0",
+    "id": "com.nextv.app",
+    "version": "1.0.0",
     "vendor": "NeXtv",
     "type": "web",
     "main": "index.html",
-    "title": "NeXtv IPTV",
-    "icon": "icons/Icon-192.png",
-    "largeIcon": "icons/Icon-512.png",
-    "iconColor": "#8b5cf6",
+    "title": "NeXtv",
+    "icon": "icon.png",
+    "largeIcon": "largeIcon.png",
+    "uiRevision": 2,
+    "requiredMemory": 256,
     "resolution": "1920x1080",
-    "disableBackHistoryAPI": false,
-    "handlesRelaunch": false,
-    "requiredPermissions": [
-        "media.operation",
-        "activity.operation"
-    ],
-    "appDescription": "NeXtv IPTV — Premium Live TV, Movies, Series & Catch Up with Favorites"
+    "transparent": false,
+    "visible": true,
+    "disableBackHistoryAPI": true
 }

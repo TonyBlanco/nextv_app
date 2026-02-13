@@ -8,6 +8,7 @@ import '../../core/providers/watch_providers.dart';
 import '../../core/models/watch_history_item.dart';
 import '../../core/models/watchlist_item.dart';
 import 'nova_main_screen.dart';
+import 'mobile_netflix_screen.dart';
 import 'utilities_screen.dart';
 import 'player_screen.dart';
 
@@ -834,11 +835,17 @@ class _LandingScreenState extends ConsumerState<LandingScreen> {
     // Set the active tab
     ref.read(selectedTabProvider.notifier).state = tabIndex;
 
-    // Navigate to main screen
+    // Detect if this is a mobile phone (not tablet)
+    final size = MediaQuery.of(context).size;
+    final isPhone = size.shortestSide < 600; // iPhone, Android phones
+    
+    // Navigate to appropriate screen
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => const NovaMainScreen(),
+        builder: (_) => isPhone 
+            ? const MobileNetflixScreen()
+            : const NovaMainScreen(),
       ),
     );
   }

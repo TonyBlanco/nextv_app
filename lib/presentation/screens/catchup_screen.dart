@@ -7,6 +7,7 @@ import '../../core/models/catchup_filter.dart';
 import '../../core/models/xtream_models.dart';
 import '../../core/providers/catchup_providers.dart';
 import '../../core/providers/channel_providers.dart';
+import 'player_screen.dart';
 import '../widgets/catchup_filters_bar.dart';
 import '../widgets/catchup_program_card.dart';
 
@@ -351,38 +352,30 @@ class _CatchupScreenState extends ConsumerState<CatchupScreen> {
         }
       }
       
-      // Navigate to playback (using the existing live TV player in nova_main_screen)
-      // For now, we'll show a detailed snackbar with playback info
-      // TODO: Integrate with actual player when available
+      
+      // Navigate to player
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Reproduciendo: ${program.title}',
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 4),
-                Text('Canal: ${program.channelName}'),
-                Text('Duración: ${program.duration.inMinutes} min'),
-                if (playbackInfo.shouldResume)
-                  Text('Posición: ${_formatDuration(playbackInfo.resumePosition!)}'),
-              ],
+        // Use the stream URL from the catch-up program
+        final url = program.streamUrl;
+        
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => PlayerScreen(
+              meta: PlayerMeta(
+                id: 'catchup_${program.id}',
+                type: 'catchup',
+                title: program.title,
+                seriesName: program.channelName,
+                imageUrl: program.thumbnailUrl ?? program.channelLogo,
+                streamId: program.channelId,
+              ),
             ),
-            backgroundColor: NextvColors.accent,
-            duration: const Duration(seconds: 4),
-            action: SnackBarAction(
-              label: 'OK',
-              textColor: Colors.white,
-              onPressed: () {},
-            ),
+            settings: RouteSettings(arguments: url),
           ),
         );
         
-        // Start progress tracking simulation (in real implementation, this would be in the player)
+        // Start progress tracking
         _simulateProgressTracking(program);
       }
     } catch (e) {

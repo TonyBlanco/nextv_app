@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/channel_status_service.dart';
 import '../services/epg_service.dart';
 import '../services/xtream_api_service.dart';
+import '../services/stream_validator_service.dart';
 import '../models/xtream_models.dart';
 
 // ==================== LIVE STREAMS PROVIDER ====================
@@ -18,6 +19,12 @@ final liveStreamsProvider = FutureProvider<List<LiveStream>>((ref) async {
   }
 });
 
+/// Provider for live streams by category
+final liveCategoryStreamsProvider = FutureProvider.family<List<LiveStream>, String>((ref, categoryId) async {
+  final api = ref.watch(xtreamAPIProvider);
+  return api.getLiveStreams(categoryId: categoryId);
+});
+
 // ==================== SERVICE PROVIDERS ====================
 
 /// Provider for ChannelStatusService
@@ -30,6 +37,13 @@ final channelStatusServiceProvider = Provider<ChannelStatusService>((ref) {
 /// Provider for EPGService
 final epgServiceProvider = Provider<EPGService>((ref) {
   return EPGService();
+});
+
+/// Provider for StreamValidatorService
+final streamValidatorServiceProvider = Provider<StreamValidatorService>((ref) {
+  final service = StreamValidatorService();
+  ref.onDispose(() => service.dispose());
+  return service;
 });
 
 // ==================== STREAM PROVIDERS ====================

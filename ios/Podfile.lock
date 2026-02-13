@@ -1,0 +1,129 @@
+PODS:
+  - better_player_plus (1.1.2):
+    - Cache (~> 6.0.0)
+    - Flutter
+    - GCDWebServer
+    - HLSCachingReverseProxyServer
+    - PINCache
+  - Cache (6.0.0)
+  - Flutter (1.0.0)
+  - flutter_secure_storage_darwin (10.0.0):
+    - Flutter
+    - FlutterMacOS
+  - flutter_vlc_player (3.0.3):
+    - Flutter
+    - MobileVLCKit (~> 3.6.1b1)
+  - GCDWebServer (3.5.4):
+    - GCDWebServer/Core (= 3.5.4)
+  - GCDWebServer/Core (3.5.4)
+  - HLSCachingReverseProxyServer (0.1.0):
+    - GCDWebServer (~> 3.5)
+    - PINCache (>= 3.0.1-beta.3)
+  - media_kit_video (0.0.1):
+    - Flutter
+  - MobileVLCKit (3.6.1b1)
+  - package_info_plus (0.4.5):
+    - Flutter
+  - permission_handler_apple (9.3.0):
+    - Flutter
+  - PINCache (3.0.4):
+    - PINCache/Arc-exception-safe (= 3.0.4)
+    - PINCache/Core (= 3.0.4)
+  - PINCache/Arc-exception-safe (3.0.4):
+    - PINCache/Core
+  - PINCache/Core (3.0.4):
+    - PINOperation (~> 1.2.3)
+  - PINOperation (1.2.3)
+  - shared_preferences_foundation (0.0.1):
+    - Flutter
+    - FlutterMacOS
+  - sqflite_darwin (0.0.4):
+    - Flutter
+    - FlutterMacOS
+  - url_launcher_ios (0.0.1):
+    - Flutter
+  - video_player_avfoundation (0.0.1):
+    - Flutter
+    - FlutterMacOS
+  - wakelock_plus (0.0.1):
+    - Flutter
+  - webview_flutter_wkwebview (0.0.1):
+    - Flutter
+    - FlutterMacOS
+
+DEPENDENCIES:
+  - better_player_plus (from `.symlinks/plugins/better_player_plus/ios`)
+  - Flutter (from `Flutter`)
+  - flutter_secure_storage_darwin (from `.symlinks/plugins/flutter_secure_storage_darwin/darwin`)
+  - flutter_vlc_player (from `.symlinks/plugins/flutter_vlc_player/ios`)
+  - media_kit_video (from `.symlinks/plugins/media_kit_video/ios`)
+  - package_info_plus (from `.symlinks/plugins/package_info_plus/ios`)
+  - permission_handler_apple (from `.symlinks/plugins/permission_handler_apple/ios`)
+  - shared_preferences_foundation (from `.symlinks/plugins/shared_preferences_foundation/darwin`)
+  - sqflite_darwin (from `.symlinks/plugins/sqflite_darwin/darwin`)
+  - url_launcher_ios (from `.symlinks/plugins/url_launcher_ios/ios`)
+  - video_player_avfoundation (from `.symlinks/plugins/video_player_avfoundation/darwin`)
+  - wakelock_plus (from `.symlinks/plugins/wakelock_plus/ios`)
+  - webview_flutter_wkwebview (from `.symlinks/plugins/webview_flutter_wkwebview/darwin`)
+
+SPEC REPOS:
+  trunk:
+    - Cache
+    - GCDWebServer
+    - HLSCachingReverseProxyServer
+    - MobileVLCKit
+    - PINCache
+    - PINOperation
+
+EXTERNAL SOURCES:
+  better_player_plus:
+    :path: ".symlinks/plugins/better_player_plus/ios"
+  Flutter:
+    :path: Flutter
+  flutter_secure_storage_darwin:
+    :path: ".symlinks/plugins/flutter_secure_storage_darwin/darwin"
+  flutter_vlc_player:
+    :path: ".symlinks/plugins/flutter_vlc_player/ios"
+  media_kit_video:
+    :path: ".symlinks/plugins/media_kit_video/ios"
+  package_info_plus:
+    :path: ".symlinks/plugins/package_info_plus/ios"
+  permission_handler_apple:
+    :path: ".symlinks/plugins/permission_handler_apple/ios"
+  shared_preferences_foundation:
+    :path: ".symlinks/plugins/shared_preferences_foundation/darwin"
+  sqflite_darwin:
+    :path: ".symlinks/plugins/sqflite_darwin/darwin"
+  url_launcher_ios:
+    :path: ".symlinks/plugins/url_launcher_ios/ios"
+  video_player_avfoundation:
+    :path: ".symlinks/plugins/video_player_avfoundation/darwin"
+  wakelock_plus:
+    :path: ".symlinks/plugins/wakelock_plus/ios"
+  webview_flutter_wkwebview:
+    :path: ".symlinks/plugins/webview_flutter_wkwebview/darwin"
+
+SPEC CHECKSUMS:
+  better_player_plus: 3d40145c650bb83dde08f0d593b21a144196769f
+  Cache: 4ca7e00363fca5455f26534e5607634c820ffc2d
+  Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
+  flutter_secure_storage_darwin: acdb3f316ed05a3e68f856e0353b133eec373a23
+  flutter_vlc_player: 5464f594a9338e080d240bbe7b10ffe30c7bc8bc
+  GCDWebServer: 2c156a56c8226e2d5c0c3f208a3621ccffbe3ce4
+  HLSCachingReverseProxyServer: 59935e1e0244ad7f3375d75b5ef46e8eb26ab181
+  media_kit_video: f3b0d035d89def15cfbbcf7dc2ae278f201e2f83
+  MobileVLCKit: 2d9c7c373393ae43086aeeff890bf0b1afc15c5c
+  package_info_plus: af8e2ca6888548050f16fa2f1938db7b5a5df499
+  permission_handler_apple: 4ed2196e43d0651e8ff7ca3483a069d469701f2d
+  PINCache: d9a87a0ff397acffe9e2f0db972ac14680441158
+  PINOperation: fb563bcc9c32c26d6c78aaff967d405aa2ee74a7
+  shared_preferences_foundation: 7036424c3d8ec98dfe75ff1667cb0cd531ec82bb
+  sqflite_darwin: 20b2a3a3b70e43edae938624ce550a3cbf66a3d0
+  url_launcher_ios: 7a95fa5b60cc718a708b8f2966718e93db0cef1b
+  video_player_avfoundation: dd410b52df6d2466a42d28550e33e4146928280a
+  wakelock_plus: e29112ab3ef0b318e58cfa5c32326458be66b556
+  webview_flutter_wkwebview: 8ebf4fded22593026f7dbff1fbff31ea98573c8d
+
+PODFILE CHECKSUM: f79e1872da79a29354b04cf03619f8f3d69fe58e
+
+COCOAPODS: 1.16.2
