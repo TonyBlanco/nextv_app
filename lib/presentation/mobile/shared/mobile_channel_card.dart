@@ -34,8 +34,9 @@ class MobileChannelCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Channel logo - reduced height
-            Expanded(
+            // Channel logo - smaller fixed size
+            AspectRatio(
+              aspectRatio: 1.2, // Slightly wider than tall
               child: ClipRRect(
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
                 child: stream.streamIcon.isNotEmpty
@@ -57,8 +58,8 @@ class MobileChannelCard extends StatelessWidget {
                           ),
                         ),
                         errorWidget: (context, url, error) => _buildPlaceholder(),
-                        memCacheWidth: 200,
-                        maxWidthDiskCache: 200,
+                        memCacheWidth: 150,
+                        maxWidthDiskCache: 150,
                       )
                     : _buildPlaceholder(),
               ),
@@ -120,7 +121,7 @@ class MobileChannelCard extends StatelessWidget {
         child: Icon(
           Icons.tv,
           color: NextvColors.textSecondary,
-          size: 40,
+          size: 28,
         ),
       ),
     );
