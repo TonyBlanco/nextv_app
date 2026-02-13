@@ -11,11 +11,13 @@ import 'player_screen.dart';
 class VODGridScreen extends ConsumerStatefulWidget {
   final List<VODCategory> categories;
   final XtreamAPIService api;
+  final bool showFavoritesOnly;
 
   const VODGridScreen({
     super.key,
     required this.categories,
     required this.api,
+    this.showFavoritesOnly = false,
   });
 
   @override
@@ -206,9 +208,18 @@ class _VODGridScreenState extends ConsumerState<VODGridScreen> {
                           crossAxisSpacing: 16,
                           mainAxisSpacing: 16,
                         ),
-                        itemCount: _vodStreams.length,
+                        itemCount: widget.showFavoritesOnly 
+                            ? _vodStreams.where((s) => ref.read(favoritesServiceProvider).isFavorite(s.streamId)).length 
+                            : _vodStreams.length,
                         itemBuilder: (context, index) {
-                          final movie = _vodStreams[index];
+                          final favService = ref.read(favoritesServiceProvider);
+                          final items = widget.showFavoritesOnly 
+                              ? _vodStreams.where((s) => favService.isFavorite(s.streamId)).toList()
+                              : _vodStreams;
+                          
+                          if (index >= items.length) return null;
+                          final movie = items[index];
+
                           return _MovieCard(
                             movie: movie,
                             onTap: () => _showMovieDetail(movie),
@@ -235,17 +246,17 @@ class _VODGridScreenState extends ConsumerState<VODGridScreen> {
 }
 
 /// Netflix-style movie detail dialog
-class _VODDetailDialog extends StatefulWidget {
+class _VODDetailDialog extends ConsumerStatefulWidget {
   final VODStream movie;
   final XtreamAPIService api;
 
   const _VODDetailDialog({required this.movie, required this.api});
 
   @override
-  State<_VODDetailDialog> createState() => _VODDetailDialogState();
+  ConsumerState<_VODDetailDialog> createState() => _VODDetailDialogState();
 }
 
-class _VODDetailDialogState extends State<_VODDetailDialog> {
+class _VODDetailDialogState extends ConsumerState<_VODDetailDialog> {
   VODInfo? _vodInfo;
   bool _isLoading = true;
   String? _error;
@@ -456,6 +467,39 @@ class _VODDetailDialogState extends State<_VODDetailDialog> {
                         addedAt: DateTime.now(),
                         streamId: widget.movie.streamId,
                       ),
+                    ),
+                    const SizedBox(width: 8),
+                    // Favorite (Star/Heart) Button
+                    Consumer(
+                      builder: (context, ref, child) {
+                        final isFav = ref.watch(isFavoriteProvider(widget.movie.streamId));
+                        return IconButton(
+                          icon: Icon(
+                            isFav ? Icons.favorite : Icons.favorite_border,
+                            color: isFav ? Colors.red : Colors.white70,
+                          ),
+                          onPressed: () {
+                            final favService = ref.read(favoritesServiceProvider);
+                            final stream = LiveStream(
+                              num: 0,
+                              name: widget.movie.name,
+                              streamType: 'movie',
+                              streamId: widget.movie.streamId,
+                              streamIcon: widget.movie.streamIcon,
+                              epgChannelId: 0,
+                              added: widget.movie.added,
+                              categoryId: widget.movie.categoryId,
+                              customSid: '',
+                              tvArchive: 0,
+                              directSource: widget.movie.directSource,
+                              tvArchiveDuration: 0,
+                            );
+                            favService.toggleFavorite(stream);
+                            ref.invalidate(favoritesProvider);
+                          },
+                          tooltip: isFav ? 'Remove from Favorites' : 'Add to Favorites',
+                        );
+                      },
                     ),
                   ],
                 ),

@@ -1070,6 +1070,7 @@ class _NovaMainScreenState extends ConsumerState<NovaMainScreen> with TickerProv
         return VODGridScreen(
           categories: categories,
           api: api,
+          showFavoritesOnly: _showFavoritesOnly,
         );
       },
     );
@@ -1164,6 +1165,7 @@ class _NovaMainScreenState extends ConsumerState<NovaMainScreen> with TickerProv
         return SeriesGridScreen(
           categories: categories,
           api: api,
+          showFavoritesOnly: _showFavoritesOnly,
         );
       },
     );

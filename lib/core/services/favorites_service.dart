@@ -51,9 +51,7 @@ class FavoritesService {
 
   /// Add a channel to favorites
   Future<void> addFavorite(LiveStream stream) async {
-    if (_favoriteIds.contains(stream.streamId)) {
-      return; // Already a favorite
-    }
+    if (_favoriteIds.contains(stream.streamId)) return;
 
     final favorite = FavoriteChannel(
       streamId: stream.streamId,
@@ -61,6 +59,7 @@ class FavoritesService {
       icon: stream.streamIcon,
       categoryId: stream.categoryId,
       addedAt: DateTime.now(),
+      type: 'channel',
     );
 
     _favorites.add(favorite);
@@ -68,14 +67,45 @@ class FavoritesService {
     await _saveFavorites();
   }
 
-  /// Remove a channel from favorites
+  /// Add a series to favorites
+  Future<void> addFavoriteSeries(SeriesItem series) async {
+    // For series, we use -1 as streamId if not available, OR hash code
+    // Ideally seriesId should be unique identifier. 
+    // We will use hash of seriesId for streamId Set, OR store separate set.
+    // To minimize breakage, we can use a generated ID or negative ID.
+    final id = series.seriesId.hashCode;
+    if (_favoriteIds.contains(id)) return;
+
+    final favorite = FavoriteChannel(
+      streamId: id,
+      name: series.name,
+      icon: series.cover,
+      categoryId: series.categoryId,
+      addedAt: DateTime.now(),
+      type: 'series',
+      seriesId: series.seriesId,
+      cover: series.cover,
+    );
+
+    _favorites.add(favorite);
+    _favoriteIds.add(id);
+    await _saveFavorites();
+  }
+
+  /// Remove a favorite (Channel or Series)
   Future<void> removeFavorite(int streamId) async {
     _favorites.removeWhere((f) => f.streamId == streamId);
     _favoriteIds.remove(streamId);
     await _saveFavorites();
   }
 
-  /// Toggle favorite status
+  Future<void> removeFavoriteSeries(String seriesId) async {
+    final id = seriesId.hashCode;
+    await removeFavorite(id);
+  }
+
+
+  /// Toggle favorite status for Channel
   Future<void> toggleFavorite(LiveStream stream) async {
     if (isFavorite(stream.streamId)) {
       await removeFavorite(stream.streamId);
@@ -84,9 +114,23 @@ class FavoritesService {
     }
   }
 
-  /// Check if a channel is a favorite (fast lookup)
+  /// Toggle favorite status for Series
+  Future<void> toggleFavoriteSeries(SeriesItem series) async {
+    final id = series.seriesId.hashCode;
+    if (isFavorite(id)) {
+      await removeFavorite(id);
+    } else {
+      await addFavoriteSeries(series);
+    }
+  }
+
+  /// Check if a channel/series is a favorite (fast lookup by streamId/hashCode)
   bool isFavorite(int streamId) {
     return _favoriteIds.contains(streamId);
+  }
+
+  bool isFavoriteSeries(String seriesId) {
+    return _favoriteIds.contains(seriesId.hashCode);
   }
 
   /// Get all favorites

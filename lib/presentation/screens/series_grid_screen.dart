@@ -6,16 +6,19 @@ import '../../core/models/xtream_models.dart';
 import '../../core/services/xtream_api_service.dart';
 import '../../core/models/watchlist_item.dart';
 import '../../core/providers/watch_providers.dart';
+import '../../core/providers/favorites_provider.dart';
 import 'player_screen.dart';
 
 class SeriesGridScreen extends ConsumerStatefulWidget {
   final List<SeriesCategory> categories;
   final XtreamAPIService api;
+  final bool showFavoritesOnly;
 
   const SeriesGridScreen({
     super.key,
     required this.categories,
     required this.api,
+    this.showFavoritesOnly = false,
   });
 
   @override
@@ -206,9 +209,18 @@ class _SeriesGridScreenState extends ConsumerState<SeriesGridScreen> {
                           crossAxisSpacing: 16,
                           mainAxisSpacing: 16,
                         ),
-                        itemCount: _seriesItems.length,
+                        itemCount: widget.showFavoritesOnly 
+                            ? _seriesItems.where((s) => ref.read(favoritesServiceProvider).isFavoriteSeries(s.seriesId)).length 
+                            : _seriesItems.length,
                         itemBuilder: (context, index) {
-                          final series = _seriesItems[index];
+                          final favService = ref.read(favoritesServiceProvider);
+                          final items = widget.showFavoritesOnly 
+                              ? _seriesItems.where((s) => favService.isFavoriteSeries(s.seriesId)).toList()
+                              : _seriesItems;
+                          
+                          if (index >= items.length) return null;
+                          final series = items[index];
+
                           return _SeriesCard(
                             series: series,
                             onTap: () => _showSeriesDetail(series),
@@ -426,7 +438,7 @@ class _SeriesCard extends StatelessWidget {
   }
 }
 
-class _SeriesDetailDialog extends StatefulWidget {
+class _SeriesDetailDialog extends ConsumerStatefulWidget {
   final SeriesItem series;
   final SeriesInfo seriesInfo;
   final XtreamAPIService api;
@@ -438,10 +450,10 @@ class _SeriesDetailDialog extends StatefulWidget {
   });
 
   @override
-  State<_SeriesDetailDialog> createState() => _SeriesDetailDialogState();
+  ConsumerState<_SeriesDetailDialog> createState() => _SeriesDetailDialogState();
 }
 
-class _SeriesDetailDialogState extends State<_SeriesDetailDialog> {
+class _SeriesDetailDialogState extends ConsumerState<_SeriesDetailDialog> {
   String? _selectedSeasonNumber;
 
   @override
@@ -546,6 +558,24 @@ class _SeriesDetailDialogState extends State<_SeriesDetailDialog> {
                         ),
                     ],
                   ),
+                ),
+                const SizedBox(width: 8),
+                // Favorite Button
+                Consumer(
+                  builder: (context, ref, child) {
+                    final isFav = ref.watch(isSeriesFavoriteProvider(widget.series.seriesId));
+                    return IconButton(
+                      icon: Icon(
+                        isFav ? Icons.favorite : Icons.favorite_border,
+                        color: isFav ? Colors.red : Colors.white,
+                      ),
+                      onPressed: () {
+                        ref.read(favoritesServiceProvider).toggleFavoriteSeries(widget.series);
+                        ref.invalidate(favoritesProvider);
+                      },
+                      tooltip: isFav ? 'Remove from Favorites' : 'Add to Favorites',
+                    );
+                  },
                 ),
                 IconButton(
                   icon: const Icon(Icons.close, color: Colors.white),
