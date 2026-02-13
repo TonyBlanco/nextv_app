@@ -10,18 +10,18 @@ import '../shared/mobile_channel_card.dart';
 import '../shared/mobile_search_bar.dart';
 import 'ios_player_screen.dart';
 
-/// iOS-optimized home screen with native iOS design patterns
+/// iOS-optimized Live TV screen with native iOS design patterns
 /// - Cupertino navigation
 /// - iOS-style scrolling physics
 /// - Native iOS gestures
-class IOSHomeScreen extends ConsumerStatefulWidget {
-  const IOSHomeScreen({super.key});
+class IOSLiveScreen extends ConsumerStatefulWidget {
+  const IOSLiveScreen({super.key});
 
   @override
-  ConsumerState<IOSHomeScreen> createState() => _IOSHomeScreenState();
+  ConsumerState<IOSLiveScreen> createState() => _IOSLiveScreenState();
 }
 
-class _IOSHomeScreenState extends ConsumerState<IOSHomeScreen> {
+class _IOSLiveScreenState extends ConsumerState<IOSLiveScreen> {
   String _selectedCategoryId = '';
   final ScrollController _scrollController = ScrollController();
   final List<LiveStream> _loadedChannels = [];

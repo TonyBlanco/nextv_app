@@ -2,7 +2,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'mobile/ios/ios_home_screen.dart';
+import 'mobile/ios/ios_main_screen.dart';
 import 'mobile/android/android_home_screen.dart';
 import 'screens/landing_screen.dart';
 
@@ -19,7 +19,7 @@ class PlatformRouter extends StatelessWidget {
     
     // iOS -> Use iOS-optimized UI
     if (Platform.isIOS) {
-      return const IOSHomeScreen();
+      return const IOSMainScreen();
     }
     
     // Android -> Use Android-optimized UI
