@@ -31,83 +31,32 @@ class MobileChannelCard extends StatelessWidget {
             ),
           ],
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Channel logo - smaller fixed size
-            AspectRatio(
-              aspectRatio: 1.2, // Slightly wider than tall
-              child: ClipRRect(
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
-                child: stream.streamIcon.isNotEmpty
-                    ? CachedNetworkImage(
-                        imageUrl: stream.streamIcon,
-                        width: double.infinity,
-                        fit: BoxFit.cover,
-                        placeholder: (context, url) => Container(
-                          color: NextvColors.background,
-                          child: const Center(
-                            child: SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: NextvColors.accent,
-                              ),
-                            ),
-                          ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: stream.streamIcon.isNotEmpty
+              ? CachedNetworkImage(
+                  imageUrl: stream.streamIcon,
+                  width: double.infinity,
+                  height: double.infinity,
+                  fit: BoxFit.cover,
+                  placeholder: (context, url) => Container(
+                    color: NextvColors.background,
+                    child: const Center(
+                      child: SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: NextvColors.accent,
                         ),
-                        errorWidget: (context, url, error) => _buildPlaceholder(),
-                        memCacheWidth: 150,
-                        maxWidthDiskCache: 150,
-                      )
-                    : _buildPlaceholder(),
-              ),
-            ),
-            
-            // Channel info - much more compact
-            Padding(
-              padding: const EdgeInsets.all(6),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    stream.name,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
+                      ),
                     ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 2),
-                  Row(
-                    children: [
-                      Container(
-                        width: 4,
-                        height: 4,
-                        decoration: const BoxDecoration(
-                          color: Colors.red,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                      const SizedBox(width: 3),
-                      const Text(
-                        'LIVE',
-                        style: TextStyle(
-                          color: NextvColors.textSecondary,
-                          fontSize: 9,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ],
+                  errorWidget: (context, url, error) => _buildPlaceholder(),
+                  memCacheWidth: 150,
+                  maxWidthDiskCache: 150,
+                )
+              : _buildPlaceholder(),
         ),
       ),
     );
