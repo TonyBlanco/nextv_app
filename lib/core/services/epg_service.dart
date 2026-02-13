@@ -114,4 +114,61 @@ class EPGService {
     final cutoff = DateTime.now().subtract(Duration(hours: hoursBack));
     return _programs[channelId]!.where((p) => p.stop.isBefore(DateTime.now()) && p.start.isAfter(cutoff)).toList();
   }
+
+  // ==================== NEW METHODS FOR ENHANCED EPG ====================
+
+  /// Get quick EPG info (current + next program) for channel preview
+  EPGQuickInfo? getQuickInfo(String channelId) {
+    if (!_programs.containsKey(channelId)) return null;
+    
+    final current = getCurrentProgram(channelId);
+    final next = getNextProgram(channelId);
+    
+    if (current == null && next == null) return null;
+    
+    return EPGQuickInfo(current: current, next: next);
+  }
+
+  /// Batch fetch EPG for multiple channels (Xtream Codes)
+  Future<void> batchFetchXtreamEPG(
+    String serverUrl,
+    String username,
+    String password,
+    List<int> streamIds,
+  ) async {
+    for (final streamId in streamIds) {
+      try {
+        await fetchXtreamEPG(serverUrl, username, password, streamId);
+        // Small delay to avoid overwhelming server
+        await Future.delayed(const Duration(milliseconds: 50));
+      } catch (e) {
+        print('Error fetching EPG for stream $streamId: $e');
+      }
+    }
+  }
+
+  /// Clear old programs to manage memory (keep only recent + upcoming)
+  void clearOldCache({int hoursToKeep = 24}) {
+    final cutoff = DateTime.now().subtract(Duration(hours: hoursToKeep));
+    
+    _programs.forEach((channelId, programs) {
+      _programs[channelId] = programs
+          .where((p) => p.stop.isAfter(cutoff))
+          .toList();
+    });
+
+    // Remove channels with no programs
+    _programs.removeWhere((_, programs) => programs.isEmpty);
+  }
+
+  /// Get total number of cached programs
+  int get cachedProgramCount {
+    return _programs.values.fold(0, (sum, programs) => sum + programs.length);
+  }
+
+  /// Clear all EPG data
+  void clearAll() {
+    _programs.clear();
+  }
 }
+

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -16,7 +17,7 @@ import '../../core/services/xtream_api_service.dart';
 import '../../core/services/provider_manager.dart';
 import '../../core/providers/active_playlist_provider.dart';
 import '../../core/localization.dart';
-import '../../core/parental_provider.dart';
+import '../../core/providers/parental_provider.dart';
 import '../../core/constants/nextv_colors.dart';
 import '../widgets/epg_modal.dart';
 import '../widgets/parental_control_modal.dart';
@@ -27,10 +28,13 @@ import '../widgets/nextv_logo.dart';
 import '../widgets/premium_top_bar.dart';
 import '../widgets/favorite_button.dart';
 import '../../core/providers/favorites_provider.dart';
+import '../widgets/html5_video_player.dart';
 import 'settings_screen.dart';
 import 'provider_manager_screen.dart';
 import 'vod_grid_screen.dart';
 import 'series_grid_screen.dart';
+import 'catchup_screen.dart';
+import '../../core/utils/country_utils.dart';
 
 
 // ========== PROVIDERS ==========
@@ -62,7 +66,11 @@ class _NovaMainScreenState extends ConsumerState<NovaMainScreen> with TickerProv
   bool _isRecording = false;
   String? _recordingPath;
   bool _isCheckingChannel = false;
-  bool _isChannelLive = false;
+  bool _isChannelLive = true;
+  String? _currentStreamUrl; // For HTML5 player on web
+  // Cached futures for FutureBuilder to prevent rebuild loops
+  Future<List<VODCategory>>? _vodCategoriesFuture;
+  Future<List<SeriesCategory>>? _seriesCategoriesFuture;
   String? _currentQuality;
   String? _currentPlayer;
   String? _changeFeedbackMessage;
@@ -75,6 +83,8 @@ class _NovaMainScreenState extends ConsumerState<NovaMainScreen> with TickerProv
   bool _isEPGOverlayVisible = false;
   bool _showDisclaimer = true;
   Timer? _disclaimerTimer;
+  bool _showFavoritesOnly = false;
+  String? _selectedCountry; // Country filter (null = All)
 
   // PlayerControls state variables
   bool _isPlaying = false;
@@ -278,6 +288,7 @@ class _NovaMainScreenState extends ConsumerState<NovaMainScreen> with TickerProv
   }
 
   Future<void> _checkChannelStatus(String url, [Map<String, String> headers = const {}]) async {
+    if (!mounted) return;
     setState(() => _isCheckingChannel = true);
     try {
       final response = await _dio.head(url, options: Options(
@@ -288,10 +299,14 @@ class _NovaMainScreenState extends ConsumerState<NovaMainScreen> with TickerProv
           ...headers,
         },
       ));
+      if (!mounted) return;
       setState(() => _isChannelLive = response.statusCode == 200);
     } catch (e) {
-      setState(() => _isChannelLive = false);
+      if (!mounted) return;
+      // Default to true - assume channel is live unless we explicitly fail
+      setState(() => _isChannelLive = true);
     }
+    if (!mounted) return;
     setState(() => _isCheckingChannel = false);
   }
 
@@ -421,7 +436,11 @@ class _NovaMainScreenState extends ConsumerState<NovaMainScreen> with TickerProv
       return;
     }
 
-    if (settings.playerType == 'vlc') {
+
+    // On web, VLC is not available - always use BetterPlayer
+    if (kIsWeb || settings.playerType != 'vlc') {
+      await _playWithBetterPlayer(url, extension, stream.httpHeaders);
+    } else if (settings.playerType == 'vlc') {
       try {
         await _playWithVLC(url);
       } catch (e) {
@@ -442,6 +461,17 @@ class _NovaMainScreenState extends ConsumerState<NovaMainScreen> with TickerProv
     final url = fullUrl;
     debugPrint('Playing: $url');
     if (extraHeaders.isNotEmpty) debugPrint('With headers: $extraHeaders');
+
+    // On web, use HTML5 player instead of BetterPlayer
+    if (kIsWeb) {
+      setState(() {
+        _currentStreamUrl = url;
+        _playbackError = null;
+        _isPlaying = true;
+      });
+      _startPlaybackTimeout();
+      return;
+    }
 
     // Build headers map - always include User-Agent and Referer for M3U streams
     final Map<String, String> headers = {
@@ -634,6 +664,7 @@ class _NovaMainScreenState extends ConsumerState<NovaMainScreen> with TickerProv
             children: [
               _buildTopBar(tr, settings),
               _buildSecondaryBar(tr),
+              _buildCountryChipBar(),
               Expanded(
                 child: selectedTab == 1
                     ? _buildVODContent() // Movies tab
@@ -642,6 +673,7 @@ class _NovaMainScreenState extends ConsumerState<NovaMainScreen> with TickerProv
                         : selectedTab == 3
                             ? _buildCatchUpContent() // Catch Up tab
                             : Row( // Live TV tab (default)
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
                                 children: [
                                   _buildSidebar(tr),
                                   Expanded(child: _buildMainArea(tr, settings)),
@@ -993,8 +1025,9 @@ class _NovaMainScreenState extends ConsumerState<NovaMainScreen> with TickerProv
     // Note: We need to store VOD categories in state when connecting
     // For now, we'll load them on demand
     
+    _vodCategoriesFuture ??= api.getVODCategories();
     return FutureBuilder<List<VODCategory>>(
-      future: api.getVODCategories(),
+      future: _vodCategoriesFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(
@@ -1086,8 +1119,9 @@ class _NovaMainScreenState extends ConsumerState<NovaMainScreen> with TickerProv
       );
     }
     
+    _seriesCategoriesFuture ??= api.getSeriesCategories();
     return FutureBuilder<List<SeriesCategory>>(
-      future: api.getSeriesCategories(),
+      future: _seriesCategoriesFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(
@@ -1136,104 +1170,7 @@ class _NovaMainScreenState extends ConsumerState<NovaMainScreen> with TickerProv
   }
 
   Widget _buildCatchUpContent() {
-    final pm = ref.read(providerManagerProvider);
-    final api = ref.read(xtreamAPIProvider);
-    final playlist = ref.read(activePlaylistProvider);
-
-    // Ensure provider is synced from active playlist
-    if (pm.activeProviderType == 'unknown' && playlist != null) {
-      pm.setActiveProvider(
-        name: playlist.name,
-        type: playlist.type == 'xtream' ? 'xtream' : 'm3u',
-      );
-    }
-    // Ensure Xtream API is initialized
-    if (!api.isInitialized && playlist != null) {
-      final creds = playlist.toXtreamCredentials;
-      if (creds != null) api.setCredentials(creds);
-    }
-
-    if (pm.activeProviderType != 'xtream' || !api.isInitialized) {
-      return const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.replay, size: 64, color: Colors.white24),
-            SizedBox(height: 16),
-            Text('Catch Up solo disponible con proveedores Xtream',
-                style: TextStyle(color: Colors.white60)),
-            SizedBox(height: 8),
-            Text('Conecta una cuenta Xtream para ver programas anteriores',
-                style: TextStyle(color: Colors.white38, fontSize: 14)),
-          ],
-        ),
-      );
-    }
-
-    // Catch Up: show live channels that support catch-up (tv_archive == 1)
-    return FutureBuilder<List<LiveStream>>(
-      future: _loadCatchUpStreams(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                CircularProgressIndicator(color: NextvColors.accent),
-                SizedBox(height: 16),
-                Text('Cargando Catch Up...', style: TextStyle(color: Colors.white60)),
-              ],
-            ),
-          );
-        }
-
-        final streams = snapshot.data ?? [];
-        if (streams.isEmpty) {
-          return const Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.replay, size: 64, color: Colors.white24),
-                SizedBox(height: 16),
-                Text('No hay canales con Catch Up disponibles',
-                    style: TextStyle(color: Colors.white60)),
-              ],
-            ),
-          );
-        }
-
-        return ListView.builder(
-          itemCount: streams.length,
-          itemBuilder: (context, index) {
-            final stream = streams[index];
-            return ListTile(
-              leading: stream.streamIcon.isNotEmpty
-                  ? Image.network(stream.streamIcon, width: 40, height: 40,
-                      errorBuilder: (_, __, ___) => const Icon(Icons.replay, color: Colors.white54))
-                  : const Icon(Icons.replay, color: Colors.white54),
-              title: Text(stream.name, style: const TextStyle(color: Colors.white)),
-              subtitle: Text('Catch Up: ${stream.tvArchiveDuration} days',
-                  style: const TextStyle(color: Colors.white38, fontSize: 12)),
-              onTap: () => _playStream(stream),
-            );
-          },
-        );
-      },
-    );
-  }
-
-  Future<List<LiveStream>> _loadCatchUpStreams() async {
-    final api = ref.read(xtreamAPIProvider);
-    final categories = await api.getLiveCategories();
-    final List<LiveStream> catchUpStreams = [];
-    for (final cat in categories) {
-      try {
-        final streams = await api.getLiveStreams(categoryId: cat.categoryId);
-        catchUpStreams.addAll(streams.where((s) => s.tvArchive == 1));
-      } catch (_) {}
-      if (catchUpStreams.length >= 200) break; // Limit for performance
-    }
-    return catchUpStreams;
+    return const CatchupScreen();
   }
 
   // ========== TOP BAR (Logo + Tabs + VPN indicator) ==========
@@ -1323,24 +1260,24 @@ class _NovaMainScreenState extends ConsumerState<NovaMainScreen> with TickerProv
   // ========== SHOW CATEGORY FILTER ==========
   void _showCategoryFilter(BuildContext context) {
     final categories = ref.read(categoriesProvider);
+    String? selectedCat;
     showDialog(
       context: context,
       builder: (_) => CategoryFilterDialog(
-        availableCategories: categories,
+        categories: categories,
+        selectedCategory: ref.read(currentCategoryName),
+        onCategorySelected: (value) {
+          selectedCat = value;
+        },
       ),
     ).then((_) {
-      // After dialog closes, apply the filter from the provider state
-      final filterState = ref.read(categoryFilterProvider);
-      if (filterState.selectedCategories.isNotEmpty) {
-        final filtered = categories.where(
-          (c) => filterState.selectedCategories.contains(c.categoryName),
-        ).toList();
-        if (filtered.isNotEmpty) {
-          ref.read(currentCategoryName.notifier).state = filtered.first.categoryName;
-          _loadStreams(filtered.first.categoryId);
+      if (selectedCat != null) {
+        final match = categories.where((c) => c.categoryName == selectedCat).toList();
+        if (match.isNotEmpty) {
+          ref.read(currentCategoryName.notifier).state = match.first.categoryName;
+          _loadStreams(match.first.categoryId);
         }
       } else {
-        // No filter - reload all
         _loadCategories();
       }
     });
@@ -1354,9 +1291,10 @@ class _NovaMainScreenState extends ConsumerState<NovaMainScreen> with TickerProv
     final parentalSettings = ref.watch(parentalProvider);
     final settings = ref.watch(settingsProvider);
 
-    final filteredCategories = parentalSettings.enabled
+    final parentFiltered = parentalSettings.enabled
         ? categories.where((c) => !parentalSettings.blockedCategories.contains(c.categoryName)).toList()
         : categories;
+    final filteredCategories = filterByCountry(parentFiltered, _selectedCountry);
 
     if (settings.tvMode) {
       return Container(
@@ -1401,6 +1339,34 @@ class _NovaMainScreenState extends ConsumerState<NovaMainScreen> with TickerProv
                     const SizedBox(width: 8),
                     const Icon(Icons.arrow_drop_down, size: 20),
                   ],
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            // Favourites toggle
+            GestureDetector(
+              onTap: () => setState(() => _showFavoritesOnly = !_showFavoritesOnly),
+              child: TvModeCard(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  child: Row(
+                    children: [
+                      Icon(
+                        _showFavoritesOnly ? Icons.star : Icons.star_border,
+                        size: 18,
+                        color: _showFavoritesOnly ? Colors.amber : Colors.white54,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        tr('favorites'),
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: _showFavoritesOnly ? Colors.amber : Colors.white,
+                          fontWeight: _showFavoritesOnly ? FontWeight.bold : FontWeight.normal,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -1483,6 +1449,42 @@ class _NovaMainScreenState extends ConsumerState<NovaMainScreen> with TickerProv
               ),
             ),
           ),
+          const SizedBox(width: 8),
+          // Favourites toggle
+          GestureDetector(
+            onTap: () => setState(() => _showFavoritesOnly = !_showFavoritesOnly),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: _showFavoritesOnly
+                    ? Colors.amber.withValues(alpha: 0.2)
+                    : NextvColors.surface,
+                border: Border.all(
+                  color: _showFavoritesOnly ? Colors.amber : Colors.white24,
+                  width: 1,
+                ),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    _showFavoritesOnly ? Icons.star : Icons.star_border,
+                    size: 14,
+                    color: _showFavoritesOnly ? Colors.amber : Colors.white54,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    tr('favorites'),
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: _showFavoritesOnly ? Colors.amber : Colors.white70,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
           const Spacer(),
           // EPG & Category buttons
           OutlinedButton.icon(
@@ -1503,6 +1505,107 @@ class _NovaMainScreenState extends ConsumerState<NovaMainScreen> with TickerProv
     );
   }
 
+  /// Country chip bar — horizontal scrollable row of country filter chips
+  Widget _buildCountryChipBar() {
+    final categories = ref.watch(categoriesProvider);
+    final countries = extractAllCountries(categories);
+
+    // Don't show if no countries detected or only 1
+    if (countries.length <= 1) return const SizedBox.shrink();
+
+    return Container(
+      height: 44,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: const BoxDecoration(
+        color: NextvColors.background,
+        border: Border(bottom: BorderSide(color: Colors.white10)),
+      ),
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        children: [
+          // "All" chip
+          Padding(
+            padding: const EdgeInsets.only(right: 6, top: 6, bottom: 6),
+            child: ChoiceChip(
+              label: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: const [
+                  Text('🌍', style: TextStyle(fontSize: 14)),
+                  SizedBox(width: 4),
+                  Text('All'),
+                ],
+              ),
+              selected: _selectedCountry == null,
+              selectedColor: NextvColors.accent,
+              backgroundColor: NextvColors.surface,
+              labelStyle: TextStyle(
+                fontSize: 12,
+                fontWeight: _selectedCountry == null ? FontWeight.bold : FontWeight.normal,
+                color: _selectedCountry == null ? Colors.white : Colors.white70,
+              ),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              side: BorderSide(
+                color: _selectedCountry == null ? NextvColors.accent : Colors.white24,
+              ),
+              onSelected: (_) {
+                setState(() => _selectedCountry = null);
+                // Reload with first category
+                final cats = ref.read(categoriesProvider);
+                if (cats.isNotEmpty) {
+                  ref.read(currentCategoryName.notifier).state = cats.first.categoryName;
+                  _loadStreams(cats.first.categoryId);
+                }
+              },
+            ),
+          ),
+          // Country chips
+          ...countries.map((code) {
+            final flag = getCountryFlag(code);
+            final label = getCountryLabel(code);
+            final isSelected = _selectedCountry == code;
+            return Padding(
+              padding: const EdgeInsets.only(right: 6, top: 6, bottom: 6),
+              child: ChoiceChip(
+                label: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(flag, style: const TextStyle(fontSize: 14)),
+                    const SizedBox(width: 4),
+                    Text(label),
+                  ],
+                ),
+                selected: isSelected,
+                selectedColor: NextvColors.accent,
+                backgroundColor: NextvColors.surface,
+                labelStyle: TextStyle(
+                  fontSize: 12,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                  color: isSelected ? Colors.white : Colors.white70,
+                ),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                side: BorderSide(
+                  color: isSelected ? NextvColors.accent : Colors.white24,
+                ),
+                onSelected: (_) {
+                  setState(() => _selectedCountry = isSelected ? null : code);
+                  // Auto-select first category of that country
+                  final cats = filterByCountry(
+                    ref.read(categoriesProvider),
+                    isSelected ? null : code,
+                  );
+                  if (cats.isNotEmpty) {
+                    ref.read(currentCategoryName.notifier).state = cats.first.categoryName;
+                    _loadStreams(cats.first.categoryId);
+                  }
+                },
+              ),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+
   // ========== SIDEBAR (Channel list with live/dead indicator) ==========
   Widget _buildSidebar(String Function(String) tr) {
     final streams = ref.watch(streamsProvider);
@@ -1516,12 +1619,19 @@ class _NovaMainScreenState extends ConsumerState<NovaMainScreen> with TickerProv
 
     final categoryMap = {for (var c in categories) c.categoryId: c.categoryName};
 
-    final filteredStreams = _searchQuery.isEmpty
-        ? streams.where((s) => !parentalSettings.enabled || !parentalSettings.blockedCategories.contains(categoryMap[s.categoryId] ?? '')).toList()
-        : streams.where((s) =>
-            s.name.toLowerCase().contains(_searchQuery.toLowerCase()) &&
-            (!parentalSettings.enabled || !parentalSettings.blockedCategories.contains(categoryMap[s.categoryId] ?? ''))
-          ).toList();
+    final favService = ref.watch(favoritesServiceProvider);
+
+    List<LiveStream> filteredStreams;
+    if (_showFavoritesOnly) {
+      filteredStreams = streams.where((s) => favService.isFavorite(s.streamId)).toList();
+    } else {
+      filteredStreams = _searchQuery.isEmpty
+          ? streams.where((s) => !parentalSettings.enabled || !parentalSettings.blockedCategories.contains(categoryMap[s.categoryId] ?? '')).toList()
+          : streams.where((s) =>
+              s.name.toLowerCase().contains(_searchQuery.toLowerCase()) &&
+              (!parentalSettings.enabled || !parentalSettings.blockedCategories.contains(categoryMap[s.categoryId] ?? ''))
+            ).toList();
+    }
 
     if (settings.tvMode) {
       return Container(
@@ -1787,15 +1897,36 @@ class _NovaMainScreenState extends ConsumerState<NovaMainScreen> with TickerProv
                                 ),
                               ],
                             )
-                          : settings.playerType == 'vlc' && _vlcPlayerController != null
-                              ? VlcPlayer(
-                                  controller: _vlcPlayerController!,
-                                  aspectRatio: 16 / 9,
-                                  placeholder: const Center(child: CircularProgressIndicator()),
+                          : kIsWeb && _currentStreamUrl != null
+                              // HTML5 player for web platforms (most compatible)
+                              ? Html5VideoPlayer(
+                                  url: _currentStreamUrl!,
+                                  autoPlay: true,
+                                  controls: true,
+                                  isLive: true, // Explicitly set as Live
+                                  onPlay: () {
+                                    setState(() {
+                                      _isPlaying = true;
+                                      _playbackError = null;
+                                    });
+                                    _playbackTimeoutTimer?.cancel();
+                                    _autoSkipCount = 0;
+                                  },
+                                  onError: (error) {
+                                    debugPrint('HTML5 Player error: $error');
+                                    setState(() => _playbackError = error);
+                                    _skipToNextChannel();
+                                  },
                                 )
-                              : _betterPlayerController != null
-                                  ? BetterPlayer(controller: _betterPlayerController!)
-                                  : const CircularProgressIndicator(),
+                              : settings.playerType == 'vlc' && _vlcPlayerController != null
+                                  ? VlcPlayer(
+                                      controller: _vlcPlayerController!,
+                                      aspectRatio: 16 / 9,
+                                      placeholder: const Center(child: CircularProgressIndicator()),
+                                    )
+                                  : _betterPlayerController != null
+                                      ? BetterPlayer(controller: _betterPlayerController!)
+                                      : const CircularProgressIndicator(),
                 ),
                 // Professional badges overlay (hidden in fullscreen — shown in bottom bar instead)
                 if (currentStream != null && !_isFullscreen) ...[
@@ -2527,27 +2658,33 @@ class _NovaMainScreenState extends ConsumerState<NovaMainScreen> with TickerProv
     }
 
     try {
+      const serverUrl = '';
+      const username = '';
+      const password = '';
       String content;
       String filename;
       
       switch (type) {
         case 'country':
-          content = await PlaylistGenerator.generatePlaylistByCountry(
-            streams, categories, value, value,
+          content = PlaylistGenerator.generatePlaylistByCountry(
+            streams, value,
+            serverUrl: serverUrl, username: username, password: password,
           );
           filename = 'playlist_$value';
           break;
         case 'language':
-          content = await PlaylistGenerator.generatePlaylistByLanguage(streams, value);
+          content = PlaylistGenerator.generatePlaylistByLanguage(
+            streams, value,
+            serverUrl: serverUrl, username: username, password: password,
+          );
           filename = 'playlist_$value';
           break;
         default:
           return;
       }
 
-      final path = await PlaylistGenerator.savePlaylist(content, filename);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Playlist saved: $path')),
+        SnackBar(content: Text('Playlist generated ($filename): ${content.length} bytes')),
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(

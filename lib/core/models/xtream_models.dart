@@ -569,6 +569,7 @@ class Episode {
   final List<String> bitrate;
   final String rating;
   final String season;
+  final String directSource;
 
   Episode({
     required this.id,
@@ -583,6 +584,7 @@ class Episode {
     required this.bitrate,
     required this.rating,
     required this.season,
+    this.directSource = '',
   });
 
   factory Episode.fromJson(Map<String, dynamic> json) {
@@ -603,10 +605,12 @@ class Episode {
       bitrate: (json['bitrate'] as List?)?.map((e) => e.toString()).toList() ?? [],
       rating: json['rating']?.toString() ?? infoMap['rating']?.toString() ?? '',
       season: json['season']?.toString() ?? '',
+      directSource: json['direct_source'] as String? ?? '',
     );
   }
 
   String getStreamUrl(String serverUrl, String username, String password) {
+    if (directSource.isNotEmpty) return directSource;
     return '$serverUrl/series/$username/$password/$id.$containerExtension';
   }
 }
@@ -665,4 +669,66 @@ class SeriesDetails {
       tmdbId: json['tmdb_id']?.toString() ?? '',
     );
   }
+}
+
+// ==================== LIVE INDICATORS & EPG MODELS ====================
+
+/// Channel live status information
+class ChannelStatus {
+  final int streamId;
+  final bool isLive;
+  final DateTime lastChecked;
+  final int? bitrate;
+
+  ChannelStatus({
+    required this.streamId,
+    required this.isLive,
+    required this.lastChecked,
+    this.bitrate,
+  });
+
+  /// Check if status is stale (older than 5 minutes)
+  bool get isStale {
+    return DateTime.now().difference(lastChecked).inMinutes > 5;
+  }
+
+  ChannelStatus copyWith({
+    int? streamId,
+    bool? isLive,
+    DateTime? lastChecked,
+    int? bitrate,
+  }) {
+    return ChannelStatus(
+      streamId: streamId ?? this.streamId,
+      isLive: isLive ?? this.isLive,
+      lastChecked: lastChecked ?? this.lastChecked,
+      bitrate: bitrate ?? this.bitrate,
+    );
+  }
+}
+
+/// Quick EPG information for channel preview
+class EPGQuickInfo {
+  final EPGProgram? current;
+  final EPGProgram? next;
+
+  EPGQuickInfo({
+    this.current,
+    this.next,
+  });
+
+  /// Get progress of current program (0.0 to 1.0)
+  double? get progress {
+    if (current == null) return null;
+    final now = DateTime.now();
+    if (now.isBefore(current!.start) || now.isAfter(current!.stop)) {
+      return null;
+    }
+    final total = current!.stop.difference(current!.start).inSeconds;
+    final elapsed = now.difference(current!.start).inSeconds;
+    return elapsed / total;
+  }
+
+  /// Check if there's any EPG data available
+  bool get hasData => current != null || next != null;
 }

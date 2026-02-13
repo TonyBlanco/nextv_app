@@ -4,7 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../core/models/xtream_models.dart';
 import '../../core/services/xtream_api_service.dart';
-import '../screens/player_screen.dart';
+import '../../core/models/watchlist_item.dart';
+import '../../core/providers/watch_providers.dart';
+import 'player_screen.dart';
 
 class SeriesGridScreen extends ConsumerStatefulWidget {
   final List<SeriesCategory> categories;
@@ -35,18 +37,21 @@ class _SeriesGridScreenState extends ConsumerState<SeriesGridScreen> {
   }
 
   Future<void> _loadSeries(String categoryId) async {
+    if (!mounted) return;
     setState(() {
       _isLoading = true;
     });
 
     try {
       final series = await widget.api.getSeries(categoryId: categoryId);
+      if (!mounted) return;
       setState(() {
         _seriesItems = series;
         _isLoading = false;
       });
     } catch (e) {
       debugPrint('Error loading series: $e');
+      if (!mounted) return;
       setState(() {
         _isLoading = false;
       });
@@ -627,7 +632,16 @@ class _SeriesDetailDialogState extends State<_SeriesDetailDialog> {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (context) => const PlayerScreen(),
+                                builder: (context) => PlayerScreen(
+                                  meta: PlayerMeta(
+                                    id: 'series_${widget.series.seriesId}_ep_${episode.id}',
+                                    type: 'episode',
+                                    title: 'S${_selectedSeasonNumber}E${index + 1}: ${episode.title}',
+                                    seriesName: widget.seriesInfo.info.name,
+                                    imageUrl: widget.seriesInfo.info.cover,
+                                    streamId: int.tryParse(episode.id) ?? 0,
+                                  ),
+                                ),
                                 settings: RouteSettings(arguments: url),
                               ),
                             );

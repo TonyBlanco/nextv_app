@@ -83,6 +83,24 @@ class ParentalNotifier extends StateNotifier<ParentalSettings> {
     _saveSettings();
   }
 
+  void blockCategory(String category) {
+    final blocked = List<String>.from(state.blockedCategories);
+    if (!blocked.contains(category)) {
+      blocked.add(category);
+      state = state.copyWith(blockedCategories: blocked);
+      _saveSettings();
+    }
+  }
+
+  void unblockCategory(String category) {
+    final blocked = List<String>.from(state.blockedCategories);
+    if (blocked.contains(category)) {
+      blocked.remove(category);
+      state = state.copyWith(blockedCategories: blocked);
+      _saveSettings();
+    }
+  }
+
   bool isCategoryBlocked(String category) {
     if (!state.enabled) return false;
     return state.blockedCategories.contains(category);

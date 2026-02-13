@@ -4,7 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../core/models/xtream_models.dart';
 import '../../core/services/xtream_api_service.dart';
-import '../screens/player_screen.dart';
+import '../../core/models/watchlist_item.dart';
+import '../../core/providers/watch_providers.dart';
+import 'player_screen.dart';
 
 class VODGridScreen extends ConsumerStatefulWidget {
   final List<VODCategory> categories;
@@ -35,18 +37,21 @@ class _VODGridScreenState extends ConsumerState<VODGridScreen> {
   }
 
   Future<void> _loadVODStreams(String categoryId) async {
+    if (!mounted) return;
     setState(() {
       _isLoading = true;
     });
 
     try {
       final streams = await widget.api.getVODStreams(categoryId: categoryId);
+      if (!mounted) return;
       setState(() {
         _vodStreams = streams;
         _isLoading = false;
       });
     } catch (e) {
       debugPrint('Error loading VOD streams: $e');
+      if (!mounted) return;
       setState(() {
         _isLoading = false;
       });
@@ -273,15 +278,32 @@ class _VODDetailDialogState extends State<_VODDetailDialog> {
 
   void _playMovie() {
     Navigator.pop(context);
-    final url = widget.api.getVODStreamUrl(
-      widget.movie.streamId,
-      extension: widget.movie.containerExtension,
-    );
+    
+    // Check if we have a direct source (M3U or already resolved URL)
+    String url;
+    if (widget.movie.directSource.isNotEmpty) {
+      url = widget.movie.directSource;
+    } else {
+      // Fallback to constructing URL via API (Xtream)
+      url = widget.api.getVODStreamUrl(
+        widget.movie.streamId,
+        extension: widget.movie.containerExtension,
+      );
+    }
+    
     debugPrint('Playing movie: ${widget.movie.name} -> $url');
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => const PlayerScreen(),
+        builder: (context) => PlayerScreen(
+          meta: PlayerMeta(
+            id: 'vod_${widget.movie.streamId}',
+            type: 'movie',
+            title: widget.movie.name,
+            imageUrl: widget.movie.streamIcon,
+            streamId: widget.movie.streamId,
+          ),
+        ),
         settings: RouteSettings(arguments: url),
       ),
     );
@@ -419,6 +441,20 @@ class _VODDetailDialogState extends State<_VODDetailDialog> {
                         backgroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    // Watch Later button
+                    _WatchLaterButton(
+                      itemId: 'vod_${widget.movie.streamId}',
+                      item: WatchlistItem(
+                        id: 'vod_${widget.movie.streamId}',
+                        type: 'movie',
+                        title: widget.movie.name,
+                        imageUrl: widget.movie.streamIcon,
+                        playbackUrl: '',
+                        addedAt: DateTime.now(),
+                        streamId: widget.movie.streamId,
                       ),
                     ),
                   ],
@@ -730,6 +766,47 @@ class _MovieCard extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Watch Later toggle button
+class _WatchLaterButton extends ConsumerWidget {
+  final String itemId;
+  final WatchlistItem item;
+
+  const _WatchLaterButton({required this.itemId, required this.item});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isInList = ref.watch(isInWatchlistProvider(itemId));
+
+    return OutlinedButton.icon(
+      onPressed: () async {
+        final service = ref.read(watchlistServiceProvider);
+        await service.toggle(item);
+        // Force provider refresh
+        ref.invalidate(isInWatchlistProvider(itemId));
+        ref.invalidate(watchlistProvider);
+      },
+      icon: Icon(
+        isInList ? Icons.bookmark : Icons.bookmark_add_outlined,
+        color: isInList ? Colors.amber : Colors.white70,
+        size: 18,
+      ),
+      label: Text(
+        isInList ? 'Saved' : 'Watch Later',
+        style: TextStyle(
+          color: isInList ? Colors.amber : Colors.white70,
+          fontWeight: FontWeight.w500,
+          fontSize: 12,
+        ),
+      ),
+      style: OutlinedButton.styleFrom(
+        side: BorderSide(color: isInList ? Colors.amber : Colors.white24),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
       ),
     );
   }

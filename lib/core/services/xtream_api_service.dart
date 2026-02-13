@@ -19,10 +19,10 @@ class XtreamAPIService {
     receiveTimeout: const Duration(seconds: 30),
     responseType: ResponseType.json,
     headers: {
-      'User-Agent': 'IPTV Smarters Pro/3.0.9.4',
+      if (!kIsWeb) 'User-Agent': 'IPTV Smarters Pro/3.0.9.4',
       'Accept': 'application/json, text/plain, */*',
-      'Accept-Encoding': 'gzip, deflate',
-      'Connection': 'keep-alive',
+      if (!kIsWeb) 'Accept-Encoding': 'gzip, deflate',
+      if (!kIsWeb) 'Connection': 'keep-alive',
     },
     // Accept non-standard status codes (some IPTV servers return invalid codes like 884)
     validateStatus: (status) {
@@ -101,10 +101,10 @@ class XtreamAPIService {
             responseType: ResponseType.json,
             validateStatus: (status) => status != null && status < 500,
             headers: {
-              'User-Agent': userAgent,
+              if (!kIsWeb) 'User-Agent': userAgent,
               'Accept': 'application/json',
-              'Accept-Encoding': 'gzip, deflate',
-              'Connection': 'keep-alive',
+              if (!kIsWeb) 'Accept-Encoding': 'gzip, deflate',
+              if (!kIsWeb) 'Connection': 'keep-alive',
             },
           ),
         );
@@ -198,7 +198,9 @@ class XtreamAPIService {
           
           // Remember the User-Agent that worked for future API calls
           _authenticatedUserAgent = userAgent;
-          _dio.options.headers['User-Agent'] = userAgent;
+          if (!kIsWeb) {
+            _dio.options.headers['User-Agent'] = userAgent;
+          }
           
           // SUCCESS! Return immediately
           return {

@@ -1,5 +1,5 @@
-name: xupertb_app
-description: XuperTV - New Flutter multiplatform IPTV app scaffold
+name: nextv_app
+description: NeXtv - Premium IPTV Flutter app for Live TV, Movies, Series & Catch Up
 publish_to: 'none'
 version: 0.1.0
 
@@ -10,14 +10,14 @@ dependencies:
   flutter:
     sdk: flutter
   cupertino_icons: ^1.0.5
-  flutter_riverpod: ^2.3.4
+  flutter_riverpod: ^2.6.1
   dio: ^5.1.2
   video_player: ^2.6.0
-  flutter_secure_storage: ^9.0.0
+  flutter_secure_storage: ^10.0.0
   hive: ^2.2.3
   hive_flutter: ^1.1.0
   # m3u parsing implemented in `lib/utils/m3u_parser.dart` (local helper)
-  flutter_dotenv: ^5.0.2
+  flutter_dotenv: ^6.0.0
   xml: ^6.6.1
   shared_preferences: ^2.5.4
   google_fonts: ^8.0.1
@@ -26,12 +26,12 @@ dependencies:
   
   # Windows/Desktop video player
   media_kit: ^1.1.10
-  media_kit_video: ^1.2.4
+  media_kit_video: ^2.0.1
   media_kit_libs_windows_video: ^1.0.9
   
   url_launcher: ^6.3.2
   path_provider: ^2.1.3
-  permission_handler: ^11.3.1
+  permission_handler: ^12.0.1
   cached_network_image: ^3.3.0
   flutter_svg: ^2.0.10
   # better_player_plus is native-only; excluded from web builds. Use platform-specific
@@ -44,12 +44,14 @@ dependencies:
   # Google Generative AI (Gemini) SDK for Flutter
   google_generative_ai: any
   webview_flutter: ^4.13.1
+  universal_html: ^2.3.0
+  web: ^1.1.1
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^2.0.0
-  flutter_launcher_icons: ^0.13.1
+  flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.4
 
 flutter:
   uses-material-design: true

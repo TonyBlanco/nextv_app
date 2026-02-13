@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/constants/nextv_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../core/parental_provider.dart';
+import '../../core/providers/parental_provider.dart';
 
 class ParentalControlModal extends ConsumerStatefulWidget {
   const ParentalControlModal({super.key});
@@ -208,7 +208,11 @@ class _ParentalControlModalState extends ConsumerState<ParentalControlModal> {
                     label: Text(category),
                     selected: isBlocked,
                     onSelected: (selected) {
-                      ref.read(parentalProvider.notifier).toggleCategory(category);
+                      if (selected) {
+                        ref.read(parentalProvider.notifier).blockCategory(category);
+                      } else {
+                        ref.read(parentalProvider.notifier).unblockCategory(category);
+                      }
                     },
                     backgroundColor: NextvColors.background,
                     selectedColor: NextvColors.accent.withOpacity(0.2),

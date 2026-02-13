@@ -10,11 +10,11 @@ import 'core/constants/nextv_colors.dart';
 import 'core/models/playlist_model.dart';
 import 'core/models/xtream_models.dart';
 import 'core/providers/active_playlist_provider.dart';
+import 'core/providers/favorites_provider.dart';
 import 'core/services/playlist_manager.dart';
 import 'core/services/provider_manager.dart';
 import 'core/services/xtream_api_service.dart';
 import 'presentation/screens/landing_screen.dart';
-import 'presentation/screens/dashboard_screen.dart';
 import 'presentation/screens/nova_main_screen.dart';
 import 'presentation/screens/login_screen.dart';
 import 'presentation/screens/provider_manager_screen.dart';
@@ -35,7 +35,12 @@ void main() async {
     await prefs.setString('player_type', 'better');
     await prefs.setString('preferred_player', 'better_player');
   }
-  runApp(const ProviderScope(child: XuperApp()));
+  runApp(ProviderScope(
+    overrides: [
+      sharedPreferencesProvider.overrideWithValue(prefs),
+    ],
+    child: const XuperApp(),
+  ));
 }
 
 class XuperApp extends StatelessWidget {
@@ -60,8 +65,8 @@ class XuperApp extends StatelessWidget {
       ),
       home: const StartupScreen(),
       routes: {
-        '/landing': (context) => const DashboardScreen(),
-        '/dashboard': (context) => const DashboardScreen(),
+        '/landing': (context) => const LandingScreen(),
+        '/dashboard': (context) => const LandingScreen(),
         '/login': (context) => const LoginScreen(),
         '/player': (context) => const NovaMainScreen(),
         '/providers': (context) => const ProviderManagerScreen(),
@@ -95,23 +100,44 @@ class _StartupScreenState extends ConsumerState<StartupScreen> {
       _statusMessage = 'Cargando listas guardadas...';
     });
     
-    // Wait for playlist manager to load from SharedPreferences
-    final playlistManager = ref.read(playlistManagerProvider.notifier);
-    await playlistManager.loadPlaylists();
-    
-    final playlists = ref.read(playlistManagerProvider);
+    try {
+      // Add timeout to prevent infinite hanging
+      final playlistManager = ref.read(playlistManagerProvider.notifier);
+      await playlistManager.loadPlaylists().timeout(
+        const Duration(seconds: 5),
+        onTimeout: () {
+          debugPrint('⚠️ Playlist loading timed out - falling back to login');
+          throw TimeoutException('Playlist loading timed out');
+        },
+      );
+      
+      final playlists = ref.read(playlistManagerProvider);
 
-    if (!mounted) return;
+      if (!mounted) return;
 
-    if (playlists.isEmpty) {
-      // No saved playlists → go to login
+      if (playlists.isEmpty) {
+        // No saved playlists → go to login
+        Navigator.of(context).pushReplacementNamed('/login');
+      } else if (playlists.length == 1) {
+        // Exactly one playlist → auto-connect directly
+        await _autoConnect(playlists.first);
+      } else {
+        // Multiple playlists → show selector
+        Navigator.of(context).pushReplacementNamed('/playlist-selector');
+      }
+    } catch (e) {
+      debugPrint('❌ Error during initialization: $e');
+      if (!mounted) return;
+      
+      // On error, go to login screen (fresh start)
+      setState(() {
+        _statusMessage = 'Error al cargar datos. Iniciando sesión...';
+      });
+      
+      await Future.delayed(const Duration(milliseconds: 500));
+      if (!mounted) return;
+      
       Navigator.of(context).pushReplacementNamed('/login');
-    } else if (playlists.length == 1) {
-      // Exactly one playlist → auto-connect directly
-      await _autoConnect(playlists.first);
-    } else {
-      // Multiple playlists → show selector
-      Navigator.of(context).pushReplacementNamed('/playlist-selector');
     }
   }
 
@@ -147,6 +173,8 @@ class _StartupScreenState extends ConsumerState<StartupScreen> {
 
     if (!mounted) return;
 
+    debugPrint('🔍 Connection result: success=${result.success}, error=${result.error}');
+
     if (result.success) {
       ref.read(activePlaylistProvider.notifier).state = playlist;
       ref.read(currentProviderName.notifier).state = result.providerName;
@@ -160,7 +188,10 @@ class _StartupScreenState extends ConsumerState<StartupScreen> {
         ref.read(streamsProvider.notifier).state = result.streams;
       }
 
-      Navigator.of(context).pushReplacementNamed('/landing');
+      debugPrint('🚀 Navigating to LandingScreen...');
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const LandingScreen()),
+      );
     } else {
       setState(() {
         _hasFailed = true;

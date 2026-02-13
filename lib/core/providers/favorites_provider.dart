@@ -4,16 +4,14 @@ import '../models/favorite_channel.dart';
 import '../services/favorites_service.dart';
 
 /// Provider for SharedPreferences instance
-final sharedPreferencesProvider = FutureProvider<SharedPreferences>((ref) async {
-  return await SharedPreferences.getInstance();
+/// Provider for SharedPreferences instance
+final sharedPreferencesProvider = Provider<SharedPreferences>((ref) {
+  throw UnimplementedError();
 });
 
 /// Provider for FavoritesService
 final favoritesServiceProvider = Provider<FavoritesService>((ref) {
-  final prefs = ref.watch(sharedPreferencesProvider).value;
-  if (prefs == null) {
-    throw Exception('SharedPreferences not initialized');
-  }
+  final prefs = ref.watch(sharedPreferencesProvider);
   return FavoritesService(prefs);
 });
 

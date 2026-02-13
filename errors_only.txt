@@ -1,0 +1,45 @@
+error - The method 'convertAndCache' isn't defined for the type 'M3UToXMLTV' - lib\core\services\provider_manager.dart:131:40 - undefined_method
+error - The getter 'category' isn't defined for the type 'M3UEntry' - lib\core\services\provider_manager.dart:226:31 - undefined_getter
+error - The method 'toLiveStream' isn't defined for the type 'M3UEntry' - lib\core\services\provider_manager.dart:241:31 - undefined_method
+error - The named parameter 'maxChannels' isn't defined - lib\core\services\provider_manager.dart:404:9 - undefined_named_parameter
+error - The method 'parseFromUrl' isn't defined for the type 'ProgressiveM3UParser' - lib\core\services\provider_manager.dart:410:36 - undefined_method
+error - The method 'convertAndCache' isn't defined for the type 'M3UToXMLTV' - lib\core\services\provider_manager.dart:427:42 - undefined_method
+error - The getter 'category' isn't defined for the type 'M3UEntry' - lib\core\services\provider_manager.dart:499:26 - undefined_getter
+error - The method 'toLiveStream' isn't defined for the type 'M3UEntry' - lib\core\services\provider_manager.dart:505:29 - undefined_method
+error - The method 'toLiveStream' isn't defined for the type 'M3UEntry' - lib\core\services\provider_manager.dart:515:29 - undefined_method
+error - The getter 'httpHeaders' isn't defined for the type 'M3UEntry' - lib\core\services\provider_manager.dart:532:38 - undefined_getter
+error - Target of URI doesn't exist: 'm3u_parser.dart' - lib\core\utils\m3u_to_xmltv.dart:1:8 - uri_does_not_exist
+error - The name 'M3UEntry' isn't a type, so it can't be used as a type argument - lib\core\utils\m3u_to_xmltv.dart:5:30 - non_type_as_type_argument
+error - The getter 'notifier' isn't defined for the type 'Provider<PlaylistManager>' - lib\main.dart:99:62 - undefined_getter
+error - The getter 'isEmpty' isn't defined for the type 'PlaylistManager' - lib\main.dart:106:19 - undefined_getter
+error - The getter 'length' isn't defined for the type 'PlaylistManager' - lib\main.dart:109:26 - undefined_getter
+error - The getter 'first' isn't defined for the type 'PlaylistManager' - lib\main.dart:111:36 - undefined_getter
+error - Undefined name 'liveStreamsProvider' - lib\presentation\screens\catchup_screen.dart:59:40 - undefined_identifier
+error - The getter 'notifier' isn't defined for the type 'Provider<PlaylistManager>' - lib\presentation\screens\login_screen.dart:101:58 - undefined_getter
+error - The getter 'notifier' isn't defined for the type 'Provider<PlaylistManager>' - lib\presentation\screens\login_screen.dart:149:56 - undefined_getter
+error - Target of URI doesn't exist: '../../core/parental_provider.dart' - lib\presentation\screens\nova_main_screen.dart:19:8 - uri_does_not_exist
+error - Undefined name 'parentalProvider' - lib\presentation\screens\nova_main_screen.dart:800:40 - undefined_identifier
+error - The named parameter 'categories' is required, but there's no corresponding argument - lib\presentation\screens\nova_main_screen.dart:1232:23 - missing_required_argument
+error - The named parameter 'onCategorySelected' is required, but there's no corresponding argument - lib\presentation\screens\nova_main_screen.dart:1232:23 - missing_required_argument
+error - The named parameter 'availableCategories' isn't defined - lib\presentation\screens\nova_main_screen.dart:1233:9 - undefined_named_parameter
+error - Undefined name 'categoryFilterProvider' - lib\presentation\screens\nova_main_screen.dart:1237:36 - undefined_identifier
+error - Undefined name 'parentalProvider' - lib\presentation\screens\nova_main_screen.dart:1258:40 - undefined_identifier
+error - Undefined name 'parentalProvider' - lib\presentation\screens\nova_main_screen.dart:1416:40 - undefined_identifier
+error - The named parameter 'password' is required, but there's no corresponding argument - lib\presentation\screens\nova_main_screen.dart:2439:45 - missing_required_argument
+error - The named parameter 'serverUrl' is required, but there's no corresponding argument - lib\presentation\screens\nova_main_screen.dart:2439:45 - missing_required_argument
+error - The named parameter 'username' is required, but there's no corresponding argument - lib\presentation\screens\nova_main_screen.dart:2439:45 - missing_required_argument
+error - The argument type 'List<LiveCategory>' can't be assigned to the parameter type 'String'.  - lib\presentation\screens\nova_main_screen.dart:2440:22 - argument_type_not_assignable
+error - Too many positional arguments: 2 expected, but 4 found - lib\presentation\screens\nova_main_screen.dart:2440:34 - extra_positional_arguments_could_be_named
+error - The named parameter 'password' is required, but there's no corresponding argument - lib\presentation\screens\nova_main_screen.dart:2445:45 - missing_required_argument
+error - The named parameter 'serverUrl' is required, but there's no corresponding argument - lib\presentation\screens\nova_main_screen.dart:2445:45 - missing_required_argument
+error - The named parameter 'username' is required, but there's no corresponding argument - lib\presentation\screens\nova_main_screen.dart:2445:45 - missing_required_argument
+error - The method 'savePlaylist' isn't defined for the type 'PlaylistGenerator' - lib\presentation\screens\nova_main_screen.dart:2452:44 - undefined_method
+error - The named parameter 'stream' is required, but there's no corresponding argument - lib\presentation\screens\series_grid_screen.dart:630:61 - missing_required_argument
+error - The method 'get' isn't defined for the type 'AppStrings' - lib\presentation\screens\settings_screen.dart:71:41 - undefined_method
+error - The getter 'entries' isn't defined for the type 'String' - lib\presentation\screens\settings_screen.dart:148:44 - undefined_getter
+error - The named parameter 'stream' is required, but there's no corresponding argument - lib\presentation\screens\vod_grid_screen.dart:284:37 - missing_required_argument
+error - The named parameter 'stream' is required, but there's no corresponding argument - lib\presentation\widgets\enhanced_channel_tile.dart:115:13 - missing_required_argument
+error - The named parameter 'streamId' isn't defined - lib\presentation\widgets\enhanced_channel_tile.dart:115:28 - undefined_named_parameter
+error - The getter 'primary' isn't defined for the type 'NextvColors' - lib\presentation\widgets\enhanced_channel_tile.dart:127:28 - undefined_getter
+error - Undefined class 'EPGQuickInfo' - lib\presentation\widgets\epg_quick_preview.dart:35:28 - undefined_class
+error - Undefined class 'EPGQuickInfo' - lib\presentation\widgets\epg_quick_preview.dart:67:29 - undefined_class
