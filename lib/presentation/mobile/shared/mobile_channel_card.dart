@@ -22,23 +22,22 @@ class MobileChannelCard extends StatelessWidget {
       child: Container(
         decoration: BoxDecoration(
           color: NextvColors.surface,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(8),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.2),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
+              color: Colors.black.withOpacity(0.15),
+              blurRadius: 4,
+              offset: const Offset(0, 1),
             ),
           ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Channel logo
+            // Channel logo - reduced height
             Expanded(
-              flex: 3,
               child: ClipRRect(
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
                 child: stream.streamIcon.isNotEmpty
                     ? CachedNetworkImage(
                         imageUrl: stream.streamIcon,
@@ -47,65 +46,64 @@ class MobileChannelCard extends StatelessWidget {
                         placeholder: (context, url) => Container(
                           color: NextvColors.background,
                           child: const Center(
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: NextvColors.accent,
+                            child: SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: NextvColors.accent,
+                              ),
                             ),
                           ),
                         ),
                         errorWidget: (context, url, error) => _buildPlaceholder(),
-                        memCacheWidth: 300,
-                        maxWidthDiskCache: 300,
+                        memCacheWidth: 200,
+                        maxWidthDiskCache: 200,
                       )
                     : _buildPlaceholder(),
               ),
             ),
             
-            // Channel info
-            Expanded(
-              flex: 2,
-              child: Padding(
-                padding: const EdgeInsets.all(8),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      stream.name,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
+            // Channel info - much more compact
+            Padding(
+              padding: const EdgeInsets.all(6),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    stream.name,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  Row(
+                    children: [
+                      Container(
+                        width: 4,
+                        height: 4,
+                        decoration: const BoxDecoration(
+                          color: Colors.red,
+                          shape: BoxShape.circle,
+                        ),
                       ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Container(
-                          width: 6,
-                          height: 6,
-                          decoration: const BoxDecoration(
-                            color: Colors.red,
-                            shape: BoxShape.circle,
-                          ),
+                      const SizedBox(width: 3),
+                      const Text(
+                        'LIVE',
+                        style: TextStyle(
+                          color: NextvColors.textSecondary,
+                          fontSize: 9,
+                          fontWeight: FontWeight.w500,
                         ),
-                        const SizedBox(width: 4),
-                        const Expanded(
-                          child: Text(
-                            'EN VIVO',
-                            style: TextStyle(
-                              color: NextvColors.textSecondary,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ),
           ],

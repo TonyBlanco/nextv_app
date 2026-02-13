@@ -202,13 +202,13 @@ class _IOSHomeScreenState extends ConsumerState<IOSHomeScreen> {
           },
         ),
         SliverPadding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(12),
           sliver: SliverGrid(
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              childAspectRatio: 0.85,
-              crossAxisSpacing: 12,
-              mainAxisSpacing: 12,
+              crossAxisCount: 3, // Changed from 2 to 3 for more compact layout
+              childAspectRatio: 0.75, // Slightly taller cards
+              crossAxisSpacing: 8,
+              mainAxisSpacing: 8,
             ),
             delegate: SliverChildBuilderDelegate(
               (context, index) {
@@ -230,7 +230,7 @@ class _IOSHomeScreenState extends ConsumerState<IOSHomeScreen> {
                   },
                 );
               },
-              childCount: displayedStreams.length + (_isLoadingMore ? 2 : 0),
+              childCount: displayedStreams.length + (_isLoadingMore ? 3 : 0),
             ),
           ),
         ),

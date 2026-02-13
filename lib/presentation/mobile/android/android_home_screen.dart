@@ -181,14 +181,14 @@ class _AndroidHomeScreenState extends ConsumerState<AndroidHomeScreen> {
       },
       child: GridView.builder(
         controller: _scrollController,
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(12),
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2,
-          childAspectRatio: 0.85,
-          crossAxisSpacing: 12,
-          mainAxisSpacing: 12,
+          crossAxisCount: 3, // Changed from 2 to 3
+          childAspectRatio: 0.75,
+          crossAxisSpacing: 8,
+          mainAxisSpacing: 8,
         ),
-        itemCount: displayedStreams.length + (_isLoadingMore ? 2 : 0),
+        itemCount: displayedStreams.length + (_isLoadingMore ? 3 : 0),
         itemBuilder: (context, index) {
           if (index >= displayedStreams.length) {
             return const Center(

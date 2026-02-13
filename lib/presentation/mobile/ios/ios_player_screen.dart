@@ -43,38 +43,83 @@ class _IOSPlayerScreenState extends ConsumerState<IOSPlayerScreen> {
       return;
     }
 
-    final url = '${playlist.serverUrl}/live/${playlist.username}/${playlist.password}/${widget.stream.streamId}.m3u8';
+    // Detect stream type and build appropriate URLs
+    final streamType = widget.stream.streamType;
+    List<String> urlsToTry = [];
     
-    debugPrint('🎬 iOS Player: Initializing with URL: $url');
-
-    try {
-      _controller = VideoPlayerController.networkUrl(
-        Uri.parse(url),
-        httpHeaders: {
-          'User-Agent': 'smartersplayer',
-          'Connection': 'keep-alive',
-        },
-      );
-
-      await _controller!.initialize().timeout(
-        const Duration(seconds: 8),
-        onTimeout: () => throw TimeoutException('Stream timeout'),
-      );
-
-      if (!mounted) return;
-
-      await _controller!.play();
-      setState(() => _isPlaying = true);
-
-      _resetHideControlsTimer();
+    if (streamType == 'movie') {
+      // VOD/Movie - try multiple formats
+      final streamId = widget.stream.streamId;
       
-      debugPrint('✅ iOS Player: Initialized successfully');
-    } on TimeoutException {
-      debugPrint('⏱️ iOS Player: Timeout');
-      setState(() => _errorMessage = 'El canal tardó demasiado en responder');
-    } catch (e) {
-      debugPrint('❌ iOS Player: Error - $e');
-      setState(() => _errorMessage = 'Error al reproducir el canal');
+      urlsToTry = [
+        '${playlist.serverUrl}/movie/${playlist.username}/${playlist.password}/$streamId.mp4',
+        '${playlist.serverUrl}/movie/${playlist.username}/${playlist.password}/$streamId.mkv',
+        '${playlist.serverUrl}/movie/${playlist.username}/${playlist.password}/$streamId.m3u8',
+        '${playlist.serverUrl}/movie/${playlist.username}/${playlist.password}/$streamId.ts',
+      ];
+    } else {
+      // Live TV
+      urlsToTry = [
+        '${playlist.serverUrl}/live/${playlist.username}/${playlist.password}/${widget.stream.streamId}.m3u8',
+        '${playlist.serverUrl}/live/${playlist.username}/${playlist.password}/${widget.stream.streamId}.ts',
+      ];
+    }
+    
+    debugPrint('🎬 iOS Player: Stream type: $streamType');
+    debugPrint('🎬 iOS Player: Trying ${urlsToTry.length} URL formats...');
+
+    // Try each URL until one works
+    for (int i = 0; i < urlsToTry.length; i++) {
+      final url = urlsToTry[i];
+      debugPrint('🔄 Attempt ${i + 1}/${urlsToTry.length}: $url');
+      
+      try {
+        _controller?.dispose();
+        _controller = VideoPlayerController.networkUrl(
+          Uri.parse(url),
+          httpHeaders: {
+            'User-Agent': 'smartersplayer',
+            'Connection': 'keep-alive',
+          },
+        );
+
+        await _controller!.initialize().timeout(
+          const Duration(seconds: 8),
+          onTimeout: () => throw TimeoutException('Stream timeout'),
+        );
+
+        if (!mounted) return;
+
+        // Check if video has valid dimensions (not audio-only)
+        if (_controller!.value.size.width > 0 && _controller!.value.size.height > 0) {
+          await _controller!.play();
+          setState(() => _isPlaying = true);
+          _resetHideControlsTimer();
+          
+          debugPrint('✅ iOS Player: Success with URL format ${i + 1}');
+          return; // Success!
+        } else {
+          debugPrint('⚠️ Audio-only stream detected, trying next format...');
+          throw Exception('Audio-only stream');
+        }
+      } on TimeoutException {
+        debugPrint('⏱️ Timeout on attempt ${i + 1}');
+        if (i == urlsToTry.length - 1) {
+          setState(() => _errorMessage = 'El canal no responde');
+        }
+      } catch (e) {
+        debugPrint('❌ Error on attempt ${i + 1}: $e');
+        if (i == urlsToTry.length - 1) {
+          // Last attempt failed
+          if (e.toString().contains('404') || e.toString().contains('File Not Found')) {
+            setState(() => _errorMessage = 'Contenido no disponible (404)');
+          } else if (e.toString().contains('500')) {
+            setState(() => _errorMessage = 'Error del servidor (500)');
+          } else {
+            setState(() => _errorMessage = 'No se pudo reproducir');
+          }
+        }
+      }
     }
   }
 
