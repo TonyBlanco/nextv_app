@@ -141,6 +141,7 @@ class LiveStream {
   final int tvArchive;
   final String directSource;
   final int tvArchiveDuration;
+  final String? containerExtension; // For VOD content
   final Map<String, String> httpHeaders; // HTTP headers for M3U streams
   final List<Subtitle> subtitles;
 
@@ -157,6 +158,7 @@ class LiveStream {
     required this.tvArchive,
     required this.directSource,
     required this.tvArchiveDuration,
+    this.containerExtension,
     this.httpHeaders = const {},
     this.subtitles = const [],
   });
@@ -175,6 +177,7 @@ class LiveStream {
       tvArchive: int.tryParse(json['tv_archive']?.toString() ?? '0') ?? 0,
       directSource: json['direct_source'] as String? ?? '',
       tvArchiveDuration: int.tryParse(json['tv_archive_duration']?.toString() ?? '0') ?? 0,
+      containerExtension: json['container_extension'] as String?,
       subtitles: (json['subtitles'] as List?)
               ?.map((e) => Subtitle.fromJson(e as Map<String, dynamic>))
               .toList() ?? [],

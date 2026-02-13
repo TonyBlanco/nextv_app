@@ -48,15 +48,26 @@ class _IOSPlayerScreenState extends ConsumerState<IOSPlayerScreen> {
     List<String> urlsToTry = [];
     
     if (streamType == 'movie') {
-      // VOD/Movie - try multiple formats
+      // VOD/Movie - use containerExtension if available, otherwise try common formats
       final streamId = widget.stream.streamId;
+      final ext = widget.stream.containerExtension;
       
-      urlsToTry = [
-        '${playlist.serverUrl}/movie/${playlist.username}/${playlist.password}/$streamId.mp4',
-        '${playlist.serverUrl}/movie/${playlist.username}/${playlist.password}/$streamId.mkv',
-        '${playlist.serverUrl}/movie/${playlist.username}/${playlist.password}/$streamId.m3u8',
-        '${playlist.serverUrl}/movie/${playlist.username}/${playlist.password}/$streamId.ts',
-      ];
+      if (ext != null && ext.isNotEmpty) {
+        // Try the exact extension first, then fallbacks
+        urlsToTry = [
+          '${playlist.serverUrl}/movie/${playlist.username}/${playlist.password}/$streamId.$ext',
+          '${playlist.serverUrl}/movie/${playlist.username}/${playlist.password}/$streamId.mp4',
+          '${playlist.serverUrl}/movie/${playlist.username}/${playlist.password}/$streamId.mkv',
+        ];
+      } else {
+        // No extension provided, try common formats
+        urlsToTry = [
+          '${playlist.serverUrl}/movie/${playlist.username}/${playlist.password}/$streamId.mp4',
+          '${playlist.serverUrl}/movie/${playlist.username}/${playlist.password}/$streamId.mkv',
+          '${playlist.serverUrl}/movie/${playlist.username}/${playlist.password}/$streamId.m3u8',
+          '${playlist.serverUrl}/movie/${playlist.username}/${playlist.password}/$streamId.ts',
+        ];
+      }
     } else {
       // Live TV
       urlsToTry = [
@@ -66,6 +77,7 @@ class _IOSPlayerScreenState extends ConsumerState<IOSPlayerScreen> {
     }
     
     debugPrint('🎬 iOS Player: Stream type: $streamType');
+    debugPrint('🎬 iOS Player: Container extension: ${widget.stream.containerExtension}');
     debugPrint('🎬 iOS Player: Trying ${urlsToTry.length} URL formats...');
 
     // Try each URL until one works
