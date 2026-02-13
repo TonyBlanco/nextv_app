@@ -21,6 +21,7 @@ import 'presentation/screens/login_screen.dart';
 import 'presentation/screens/provider_manager_screen.dart';
 import 'presentation/screens/playlist_selector_screen.dart';
 import 'presentation/widgets/nextv_logo.dart';
+import 'presentation/platform_router.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -189,9 +190,9 @@ class _StartupScreenState extends ConsumerState<StartupScreen> {
         ref.read(streamsProvider.notifier).state = result.streams;
       }
 
-      debugPrint('🚀 Navigating to LandingScreen...');
+      debugPrint('🚀 Navigating to PlatformRouter (auto-detects iOS/Android/Desktop)...');
       Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const LandingScreen()),
+        MaterialPageRoute(builder: (_) => const PlatformRouter()),
       );
     } else {
       setState(() {
