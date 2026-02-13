@@ -205,7 +205,7 @@ class _IOSLiveScreenState extends ConsumerState<IOSLiveScreen> {
           padding: const EdgeInsets.all(12),
           sliver: SliverGrid(
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 3, // Changed from 2 to 3 for more compact layout
+              crossAxisCount: 4, // 4 columns for smaller logos
               childAspectRatio: 1.0, // Square cards - logo only
               crossAxisSpacing: 8,
               mainAxisSpacing: 8,
