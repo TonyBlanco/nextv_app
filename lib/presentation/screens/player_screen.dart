@@ -54,6 +54,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   mk.Player? _mkPlayer;
   mkv.VideoController? _mkController;
   bool _useMediaKit = false;
+  bool _isLive = false;
 
   Timer? _positionSaveTimer;
   String? _currentUrl;
@@ -101,6 +102,11 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     }
 
     _currentUrl = url;
+
+    // Determine if this is a live stream (no meta = live, or meta.type == 'live')
+    _isLive = widget.meta == null || widget.meta!.type == 'live';
+    // Also detect live from URL pattern
+    if (url.contains('/live/')) _isLive = true;
 
     // On iOS, use MediaKit for movies/episodes/catchup (supports MKV, AVI, etc.)
     // AVPlayer (video_player) only supports MP4/HLS on iOS
@@ -277,7 +283,20 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         });
       }
 
-      if (_controller!.value.position >= _controller!.value.duration) {
+      // For live streams: never mark as "completed" — the stream is ongoing.
+      // Also auto-restart if the player reports not playing (network hiccup).
+      if (_isLive) {
+        if (!_controller!.value.isPlaying && !_controller!.value.isBuffering && _isPlaying) {
+          // Live stream stalled — try to resume
+          debugPrint('🔄 Live stream stalled, restarting playback...');
+          _controller!.play();
+        }
+        return;
+      }
+
+      // VOD only: mark as complete when position reaches duration
+      if (_controller!.value.position >= _controller!.value.duration &&
+          _controller!.value.duration.inSeconds > 0) {
         setState(() => _isPlaying = false);
       }
     }
@@ -506,13 +525,11 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                             onPressed: () => Navigator.of(context).pop(),
                           ),
                           Expanded(
-                            child: widget.meta != null
-                                ? Text(
-                                    widget.meta!.title,
-                                    style: const TextStyle(color: Colors.white, fontSize: 16),
-                                    overflow: TextOverflow.ellipsis,
-                                  )
-                                : const SizedBox(),
+                            child: Text(
+                              widget.meta?.title ?? widget.stream?.name ?? '',
+                              style: const TextStyle(color: Colors.white, fontSize: 16),
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
                         ],
                       ),
@@ -539,34 +556,66 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                       top: false,
                       child: Column(
                         children: [
-                          // Progress bar
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
-                            child: Row(
-                              children: [
-                                Text(
-                                  _formatDuration(_lastPosition),
-                                  style: const TextStyle(color: Colors.white, fontSize: 12),
-                                ),
-                                Expanded(
-                                  child: Slider(
-                                    value: _lastPosition.inSeconds.toDouble().clamp(
-                                        0, (_totalDuration?.inSeconds ?? 1).toDouble()),
-                                    max: (_totalDuration?.inSeconds ?? 1).toDouble(),
-                                    onChanged: (value) {
-                                      _seekTo(Duration(seconds: value.toInt()));
-                                    },
-                                    activeColor: Colors.red,
-                                    inactiveColor: Colors.white30,
+                          if (_isLive)
+                            // LIVE indicator — no seek bar
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: Colors.red,
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: const Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(Icons.circle, color: Colors.white, size: 8),
+                                        SizedBox(width: 6),
+                                        Text(
+                                          'LIVE',
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   ),
-                                ),
-                                Text(
-                                  _formatDuration(_totalDuration ?? Duration.zero),
-                                  style: const TextStyle(color: Colors.white, fontSize: 12),
-                                ),
-                              ],
+                                ],
+                              ),
+                            )
+                          else
+                            // VOD progress bar with seek
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 16),
+                              child: Row(
+                                children: [
+                                  Text(
+                                    _formatDuration(_lastPosition),
+                                    style: const TextStyle(color: Colors.white, fontSize: 12),
+                                  ),
+                                  Expanded(
+                                    child: Slider(
+                                      value: _lastPosition.inSeconds.toDouble().clamp(
+                                          0, (_totalDuration?.inSeconds ?? 1).toDouble()),
+                                      max: (_totalDuration?.inSeconds ?? 1).toDouble(),
+                                      onChanged: (value) {
+                                        _seekTo(Duration(seconds: value.toInt()));
+                                      },
+                                      activeColor: Colors.red,
+                                      inactiveColor: Colors.white30,
+                                    ),
+                                  ),
+                                  Text(
+                                    _formatDuration(_totalDuration ?? Duration.zero),
+                                    style: const TextStyle(color: Colors.white, fontSize: 12),
+                                  ),
+                                ],
+                              ),
                             ),
-                          ),
                         ],
                       ),
                     ),
