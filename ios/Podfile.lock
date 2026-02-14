@@ -19,6 +19,8 @@ PODS:
   - HLSCachingReverseProxyServer (0.1.0):
     - GCDWebServer (~> 3.5)
     - PINCache (>= 3.0.1-beta.3)
+  - media_kit_libs_ios_video (1.0.4):
+    - Flutter
   - media_kit_video (0.0.1):
     - Flutter
   - MobileVLCKit (3.6.1b1)
@@ -56,6 +58,7 @@ DEPENDENCIES:
   - Flutter (from `Flutter`)
   - flutter_secure_storage_darwin (from `.symlinks/plugins/flutter_secure_storage_darwin/darwin`)
   - flutter_vlc_player (from `.symlinks/plugins/flutter_vlc_player/ios`)
+  - media_kit_libs_ios_video (from `.symlinks/plugins/media_kit_libs_ios_video/ios`)
   - media_kit_video (from `.symlinks/plugins/media_kit_video/ios`)
   - package_info_plus (from `.symlinks/plugins/package_info_plus/ios`)
   - permission_handler_apple (from `.symlinks/plugins/permission_handler_apple/ios`)
@@ -84,6 +87,8 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/flutter_secure_storage_darwin/darwin"
   flutter_vlc_player:
     :path: ".symlinks/plugins/flutter_vlc_player/ios"
+  media_kit_libs_ios_video:
+    :path: ".symlinks/plugins/media_kit_libs_ios_video/ios"
   media_kit_video:
     :path: ".symlinks/plugins/media_kit_video/ios"
   package_info_plus:
@@ -111,7 +116,8 @@ SPEC CHECKSUMS:
   flutter_vlc_player: 5464f594a9338e080d240bbe7b10ffe30c7bc8bc
   GCDWebServer: 2c156a56c8226e2d5c0c3f208a3621ccffbe3ce4
   HLSCachingReverseProxyServer: 59935e1e0244ad7f3375d75b5ef46e8eb26ab181
-  media_kit_video: f3b0d035d89def15cfbbcf7dc2ae278f201e2f83
+  media_kit_libs_ios_video: 5a18affdb97d1f5d466dc79988b13eff6c5e2854
+  media_kit_video: 1746e198cb697d1ffb734b1d05ec429d1fcd1474
   MobileVLCKit: 2d9c7c373393ae43086aeeff890bf0b1afc15c5c
   package_info_plus: af8e2ca6888548050f16fa2f1938db7b5a5df499
   permission_handler_apple: 4ed2196e43d0651e8ff7ca3483a069d469701f2d

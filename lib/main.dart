@@ -26,8 +26,8 @@ import 'presentation/platform_router.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  // Initialize MediaKit for desktop platforms
-  if (!kIsWeb && (Platform.isWindows || Platform.isLinux || Platform.isMacOS)) {
+  // Initialize MediaKit for desktop + iOS (iOS needs it for MKV movie playback)
+  if (!kIsWeb && (Platform.isWindows || Platform.isLinux || Platform.isMacOS || Platform.isIOS)) {
     media_kit.MediaKit.ensureInitialized();
   }
   

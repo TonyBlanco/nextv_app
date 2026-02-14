@@ -570,15 +570,9 @@ class _MobileNetflixScreenState extends ConsumerState<MobileNetflixScreen> {
     final creds = playlist.toXtreamCredentials;
     if (creds == null) return;
 
-    // Use m3u8 format for iOS compatibility if available, or containerExtension
-    var extension = movie.containerExtension;
-    // iOS doesn't support MKV/AVI natively. Try forcing m3u8 (HLS) which most IPTV servers support.
-    if (Theme.of(context).platform == TargetPlatform.iOS) {
-      if (['mkv', 'avi', 'flv', 'wmv'].contains(extension.toLowerCase())) {
-         extension = 'm3u8'; 
-      }
-    }
-
+    // Use the container extension as-is (mp4, mkv, etc.)
+    // The PlayerScreen will try fallback formats if the first one fails
+    final extension = movie.containerExtension;
     final url = '${creds.serverUrl}/movie/${creds.username}/${creds.password}/${movie.streamId}.$extension';
 
     Navigator.push(

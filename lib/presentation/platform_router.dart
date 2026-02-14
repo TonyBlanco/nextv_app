@@ -17,14 +17,10 @@ class PlatformRouter extends StatelessWidget {
       return const LandingScreen();
     }
     
-    // iOS -> Use iOS-optimized UI
-    if (Platform.isIOS) {
-      return const IOSMainScreen();
-    }
-    
-    // Android -> Use Android-optimized UI
-    if (Platform.isAndroid) {
-      return const AndroidHomeScreen();
+    // iOS & Android phones -> Use LandingScreen which auto-detects phone vs tablet
+    // and routes to MobileNetflixScreen (full Live + Movies + Series + Catch-up)
+    if (Platform.isIOS || Platform.isAndroid) {
+      return const LandingScreen();
     }
     
     // Fallback to desktop UI
