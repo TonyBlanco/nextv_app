@@ -6,6 +6,7 @@ import '../../core/models/xtream_models.dart';
 import '../../core/services/xtream_api_service.dart';
 import '../../core/models/watchlist_item.dart';
 import '../../core/providers/watch_providers.dart';
+import '../../core/providers/favorites_provider.dart';
 import 'player_screen.dart';
 
 class VODGridScreen extends ConsumerStatefulWidget {
@@ -125,7 +126,7 @@ class _VODGridScreenState extends ConsumerState<VODGridScreen> {
                   itemBuilder: (context, index) {
                     final category = widget.categories[index];
                     final isSelected = category.categoryId == _selectedCategoryId;
-                    
+
                     return Material(
                       color: isSelected ? NextvColors.accent.withOpacity(0.2) : Colors.transparent,
                       child: InkWell(
@@ -208,15 +209,15 @@ class _VODGridScreenState extends ConsumerState<VODGridScreen> {
                           crossAxisSpacing: 16,
                           mainAxisSpacing: 16,
                         ),
-                        itemCount: widget.showFavoritesOnly 
-                            ? _vodStreams.where((s) => ref.read(favoritesServiceProvider).isFavorite(s.streamId)).length 
+                        itemCount: widget.showFavoritesOnly
+                            ? _vodStreams.where((s) => ref.read(favoritesServiceProvider).isFavorite(s.streamId)).length
                             : _vodStreams.length,
                         itemBuilder: (context, index) {
                           final favService = ref.read(favoritesServiceProvider);
-                          final items = widget.showFavoritesOnly 
+                          final items = widget.showFavoritesOnly
                               ? _vodStreams.where((s) => favService.isFavorite(s.streamId)).toList()
                               : _vodStreams;
-                          
+
                           if (index >= items.length) return null;
                           final movie = items[index];
 
@@ -289,7 +290,7 @@ class _VODDetailDialogState extends ConsumerState<_VODDetailDialog> {
 
   void _playMovie() {
     Navigator.pop(context);
-    
+
     // Check if we have a direct source (M3U or already resolved URL)
     String url;
     if (widget.movie.directSource.isNotEmpty) {
@@ -301,7 +302,7 @@ class _VODDetailDialogState extends ConsumerState<_VODDetailDialog> {
         extension: widget.movie.containerExtension,
       );
     }
-    
+
     debugPrint('Playing movie: ${widget.movie.name} -> $url');
     Navigator.push(
       context,

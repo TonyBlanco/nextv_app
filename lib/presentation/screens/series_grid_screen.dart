@@ -126,7 +126,7 @@ class _SeriesGridScreenState extends ConsumerState<SeriesGridScreen> {
                   itemBuilder: (context, index) {
                     final category = widget.categories[index];
                     final isSelected = category.categoryId == _selectedCategoryId;
-                    
+
                     return Material(
                       color: isSelected ? NextvColors.accent.withOpacity(0.2) : Colors.transparent,
                       child: InkWell(
@@ -209,15 +209,15 @@ class _SeriesGridScreenState extends ConsumerState<SeriesGridScreen> {
                           crossAxisSpacing: 16,
                           mainAxisSpacing: 16,
                         ),
-                        itemCount: widget.showFavoritesOnly 
-                            ? _seriesItems.where((s) => ref.read(favoritesServiceProvider).isFavoriteSeries(s.seriesId)).length 
+                        itemCount: widget.showFavoritesOnly
+                            ? _seriesItems.where((s) => ref.read(favoritesServiceProvider).isFavoriteSeries(s.seriesId.toString())).length
                             : _seriesItems.length,
                         itemBuilder: (context, index) {
                           final favService = ref.read(favoritesServiceProvider);
-                          final items = widget.showFavoritesOnly 
-                              ? _seriesItems.where((s) => favService.isFavoriteSeries(s.seriesId)).toList()
+                          final items = widget.showFavoritesOnly
+                              ? _seriesItems.where((s) => favService.isFavoriteSeries(s.seriesId.toString())).toList()
                               : _seriesItems;
-                          
+
                           if (index >= items.length) return null;
                           final series = items[index];
 
@@ -246,7 +246,7 @@ class _SeriesGridScreenState extends ConsumerState<SeriesGridScreen> {
     try {
       // Load series info with seasons/episodes
       final seriesInfo = await widget.api.getSeriesInfo(series.seriesId);
-      
+
       if (!mounted) return;
       Navigator.pop(context); // Close loading dialog
 
@@ -563,7 +563,7 @@ class _SeriesDetailDialogState extends ConsumerState<_SeriesDetailDialog> {
                 // Favorite Button
                 Consumer(
                   builder: (context, ref, child) {
-                    final isFav = ref.watch(isSeriesFavoriteProvider(widget.series.seriesId));
+                    final isFav = ref.watch(isSeriesFavoriteProvider(widget.series.seriesId.toString()));
                     return IconButton(
                       icon: Icon(
                         isFav ? Icons.favorite : Icons.favorite_border,
@@ -655,10 +655,10 @@ class _SeriesDetailDialogState extends ConsumerState<_SeriesDetailDialog> {
                               episodeId,
                               extension: episode.containerExtension,
                             );
-                            
+
                             debugPrint('Playing episode: ${episode.title} -> $url');
                             Navigator.pop(context);
-                            
+
                             Navigator.push(
                               context,
                               MaterialPageRoute(

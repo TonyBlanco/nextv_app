@@ -1,15 +1,22 @@
-# NeXtv Development Environment (macOS)
+# NeXtv Development Environment
+
+## Platforms
+
+| Platform | Machine | Status |
+|----------|---------|--------|
+| macOS (primary) | Mac mini ARM | iOS, macOS, Web builds |
+| Windows | Separate PC | Windows builds |
+| CI/CD | GitHub Actions | All platforms |
 
 ## SDK & Tools Configuration
 
-### Flutter SDK
+### Flutter SDK (macOS)
 ```bash
 FLUTTER_ROOT=/Users/luisblancofontela/.gemini/antigravity/scratch/flutter_sdk
 PATH=$PATH:$FLUTTER_ROOT/bin
 ```
 
-**Version:** Flutter 3.41.0 (stable)  
-**Dart:** 3.11.0
+**Version:** Flutter 3.24.0+ (stable)
 
 ### CocoaPods (iOS/macOS development)
 ```bash
@@ -17,103 +24,67 @@ GEM_HOME=$HOME/.gem/ruby/2.6.0
 PATH=$PATH:$GEM_HOME/bin
 ```
 
-**Note:** CocoaPods requires Xcode to be fully installed.
-
 ---
 
 ## Project Paths
 
-```bash
-PROJECT_ROOT=/Volumes/Untitled/NEXTV APP
-```
+| Platform | Path |
+|----------|------|
+| macOS | `/Users/luisblancofontela/Development/nextv_app` |
+| Windows | `%USERPROFILE%\Development\nextv_app` |
+| GitHub | `https://github.com/TonyBlanco/nextv_app.git` |
 
 ---
 
-## Quick Setup
+## Installed Tools
 
-Run this in your terminal to configure the environment:
+### Development
+| Tool | Version | Install |
+|------|---------|---------|
+| Flutter | 3.24.0+ | Pre-installed |
+| Dart | 3.x | Bundled with Flutter |
+| Xcode | Latest | App Store |
+| CocoaPods | Latest | `brew install cocoapods` |
+| Lefthook | Latest | `brew install lefthook` |
+
+### AI Agents
+| Tool | Version | Install |
+|------|---------|---------|
+| GitHub Copilot | VS Code ext | VS Code Extensions |
+| Claude Code | 2.1.42 | `npm install -g @anthropic-ai/claude-code` |
+| gh CLI | 2.86.0 | `brew install gh` |
+| Copilot CLI | 0.0.410 | `gh copilot` (built-in) |
+| Gemini | — | `~/.gemini/` |
+
+### UI/UX Design
+| Tool | Version | Install |
+|------|---------|---------|
+| Figma | Latest | `brew install --cask figma` |
+| Device Preview | Latest | Flutter package (in pubspec) |
+| Widgetbook | 3.21.0 | Flutter dev dependency |
+| ImageMagick | 7.x | `brew install imagemagick` |
+| FFmpeg | 8.0.1 | `brew install ffmpeg` |
+| Canva | App | Pre-installed |
+
+### CI/CD & Quality
+| Tool | Purpose | Config |
+|------|---------|--------|
+| GitHub Actions | CI/CD pipeline | `.github/workflows/` |
+| Lefthook | Git hooks | `.lefthook.yml` |
+| lcov | Coverage reports | `brew install lcov` |
+| TruffleHog | Secret scanning | `brew install trufflehog` |
+
+---
+
+## Quick Setup (macOS)
 
 ```bash
 source scripts/setup_mac.sh
 ```
 
----
+## Quick Setup (Windows)
 
-## Build Commands
-
-### Android
-```bash
-flutter build apk --release
-# Output: build/app/outputs/flutter-apk/app-release.apk
+```powershell
+Set-ExecutionPolicy Bypass -Scope Process -Force
+.\scripts\setup_windows.ps1
 ```
-
-### iOS (requires Xcode)
-```bash
-flutter build ios --release
-```
-
-### macOS (requires Xcode)
-```bash
-flutter build macos --release
-```
-
-### Web
-```bash
-flutter build web --release
-# Output: build/web
-```
-
----
-
-## Development Tools
-
-### Check Flutter Setup
-```bash
-flutter doctor -v
-```
-
-### Get Dependencies
-```bash
-flutter pub get
-```
-
-### Analyze Code
-```bash
-flutter analyze
-```
-
-### Run Tests
-```bash
-flutter test
-```
-
----
-
-## Platform Requirements
-
-### ✅ Already Configured
-- Flutter SDK (3.41.0)
-- Dart SDK (3.11.0)
-- Command Line Tools for Xcode
-- Android SDK (partial)
-
-### ⚠️ Manual Setup Required
-1. **Xcode** (for iOS/macOS builds)
-   - Install from App Store
-   - Run: `sudo xcode-select --switch /Applications/Xcode.app/Contents/Developer`
-   - Run: `sudo xcodebuild -runFirstLaunch`
-
-2. **Android Licenses**
-   - Run: `flutter doctor --android-licenses`
-
-3. **CocoaPods** (after Xcode installation)
-   - Run: `brew install cocoapods`
-   - Or: `sudo gem install cocoapods`
-
----
-
-## Notes
-
-- Flutter SDK is shared across all projects
-- Always run `source scripts/setup_mac.sh` in new terminal sessions
-- For persistent PATH, add Flutter to your `~/.zshrc`

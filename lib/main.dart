@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:media_kit/media_kit.dart' as media_kit;
+import 'package:device_preview/device_preview.dart';
 import 'core/constants/nextv_colors.dart';
 import 'core/models/playlist_model.dart';
 import 'core/models/xtream_models.dart';
@@ -25,24 +26,32 @@ import 'presentation/platform_router.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   // Initialize MediaKit for desktop + iOS (iOS needs it for MKV movie playback)
   if (!kIsWeb && (Platform.isWindows || Platform.isLinux || Platform.isMacOS || Platform.isIOS)) {
     media_kit.MediaKit.ensureInitialized();
   }
-  
+
   // Force BetterPlayer as default - VLC plugin has init issues
   final prefs = await SharedPreferences.getInstance();
   if (prefs.getString('player_type') == 'vlc' || !prefs.containsKey('player_type')) {
     await prefs.setString('player_type', 'better');
     await prefs.setString('preferred_player', 'better_player');
   }
-  runApp(ProviderScope(
-    overrides: [
-      sharedPreferencesProvider.overrideWithValue(prefs),
-    ],
-    child: const XuperApp(),
-  ));
+  // Device Preview: solo activo en debug, cambiar a true para probar UI en otros dispositivos
+  const bool enableDevicePreview = false;
+
+  runApp(
+    DevicePreview(
+      enabled: enableDevicePreview && kDebugMode,
+      builder: (context) => ProviderScope(
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+        ],
+        child: const XuperApp(),
+      ),
+    ),
+  );
 }
 
 class XuperApp extends StatelessWidget {
@@ -53,6 +62,9 @@ class XuperApp extends StatelessWidget {
     return MaterialApp(
       title: 'NeXTV',
       debugShowCheckedModeBanner: false,
+      useInheritedMediaQuery: true,
+      locale: DevicePreview.locale(context),
+      builder: DevicePreview.appBuilder,
       theme: ThemeData(
         brightness: Brightness.dark,
         primaryColor: NextvColors.accent,
@@ -101,7 +113,7 @@ class _StartupScreenState extends ConsumerState<StartupScreen> {
       _hasFailed = false;
       _statusMessage = 'Cargando listas guardadas...';
     });
-    
+
     try {
       // Add timeout to prevent infinite hanging
       final playlistManager = ref.read(playlistManagerProvider.notifier);
@@ -112,7 +124,7 @@ class _StartupScreenState extends ConsumerState<StartupScreen> {
           throw TimeoutException('Playlist loading timed out');
         },
       );
-      
+
       final playlists = ref.read(playlistManagerProvider);
 
       if (!mounted) return;
@@ -130,15 +142,15 @@ class _StartupScreenState extends ConsumerState<StartupScreen> {
     } catch (e) {
       debugPrint('❌ Error during initialization: $e');
       if (!mounted) return;
-      
+
       // On error, go to login screen (fresh start)
       setState(() {
         _statusMessage = 'Error al cargar datos. Iniciando sesión...';
       });
-      
+
       await Future.delayed(const Duration(milliseconds: 500));
       if (!mounted) return;
-      
+
       Navigator.of(context).pushReplacementNamed('/login');
     }
   }

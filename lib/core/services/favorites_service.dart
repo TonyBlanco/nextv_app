@@ -7,7 +7,7 @@ import '../models/xtream_models.dart';
 /// Service for managing favorite channels with persistent storage
 class FavoritesService {
   static const String _storageKey = 'favorites_v1';
-  
+
   final SharedPreferences _prefs;
   final _favoritesController = StreamController<List<FavoriteChannel>>.broadcast();
   final Set<int> _favoriteIds = {};
@@ -70,7 +70,7 @@ class FavoritesService {
   /// Add a series to favorites
   Future<void> addFavoriteSeries(SeriesItem series) async {
     // For series, we use -1 as streamId if not available, OR hash code
-    // Ideally seriesId should be unique identifier. 
+    // Ideally seriesId should be unique identifier.
     // We will use hash of seriesId for streamId Set, OR store separate set.
     // To minimize breakage, we can use a generated ID or negative ID.
     final id = series.seriesId.hashCode;
@@ -83,7 +83,7 @@ class FavoritesService {
       categoryId: series.categoryId,
       addedAt: DateTime.now(),
       type: 'series',
-      seriesId: series.seriesId,
+      seriesId: series.seriesId.toString(),
       cover: series.cover,
     );
 

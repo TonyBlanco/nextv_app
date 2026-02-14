@@ -65,6 +65,26 @@ lib/
     └── series/           # TV series
 ```
 
+## � UI/UX Design Tools
+
+| Tool | Purpose | Command |
+|------|---------|--------|
+| **Figma** | Interface design, prototyping, design system | Open `/Applications/Figma.app` |
+| **Device Preview** | Preview app on 30+ device frames while developing | Set `enableDevicePreview = true` in `main.dart` |
+| **Widgetbook** | Visual widget catalog (like Storybook) | `flutter run -t lib/widgetbook/widgetbook_app.dart` |
+| **ImageMagick** | Generate icons, resize assets | `magick input.png -resize 512x512 output.png` |
+| **FFmpeg** | Process video, generate thumbnails | `ffmpeg -i video.mp4 -ss 5 -frames:v 1 thumb.jpg` |
+
+## 🤖 AI Agent Tools
+
+| Tool | Version | Purpose | Command |
+|------|---------|---------|--------|
+| **GitHub Copilot** | VS Code extension | AI code completion & chat | Built into VS Code |
+| **Claude Code** | 2.1.42 | Anthropic AI agent in terminal | `claude` |
+| **GitHub Copilot CLI** | 0.0.410 | AI-powered shell suggestions | `gh copilot suggest "query"` |
+| **gh CLI** | 2.86.0 | GitHub from terminal (PRs, issues, Actions) | `gh repo view`, `gh pr create` |
+| **Gemini** | — | Google AI agent | `~/.gemini/` |
+
 ## 🏁 Getting Started
 
 ### Prerequisites
@@ -74,15 +94,19 @@ lib/
 flutter --version
 
 # Install dev tools (macOS)
-brew install lefthook lcov
+brew install lefthook lcov gh
 brew install trufflesecurity/trufflehog/trufflehog
+brew install imagemagick ffmpeg
+brew install --cask figma
+npm install -g @anthropic-ai/claude-code
+gh extension install github/gh-copilot
 ```
 
-### Setup
+### Setup (macOS)
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/[your-username]/nextv_app.git
+git clone https://github.com/TonyBlanco/nextv_app.git
 cd nextv_app
 
 # 2. Install dependencies
@@ -96,6 +120,19 @@ flutter test --coverage
 
 # 5. Run the app
 flutter run
+```
+
+### Setup (Windows)
+
+```powershell
+# 1. Clone and run setup script
+git clone https://github.com/TonyBlanco/nextv_app.git
+cd nextv_app
+Set-ExecutionPolicy Bypass -Scope Process -Force
+.\scripts\setup_windows.ps1
+
+# 2. Build Windows app
+flutter build windows --release
 ```
 
 ## 🧪 Development Workflow
@@ -130,15 +167,21 @@ trufflehog filesystem . --no-update
 ### Building
 
 ```bash
-# Debug build
-flutter build apk --debug --obfuscate --split-debug-info=debug-info/
-
-# Release build (with code obfuscation)
+# Android
 flutter build apk --release --obfuscate --split-debug-info=debug-info/
 flutter build appbundle --release --obfuscate --split-debug-info=debug-info/
 
 # iOS
 flutter build ios --release --obfuscate --split-debug-info=debug-info/
+
+# Windows (only on Windows machine)
+flutter build windows --release
+
+# Web
+flutter build web --release
+
+# Widgetbook (UI catalog)
+flutter run -t lib/widgetbook/widgetbook_app.dart
 ```
 
 ## 📖 Documentation
@@ -152,6 +195,10 @@ Comprehensive documentation is available in the [`docs/`](docs/) directory:
 - **[ARCHITECTURE.md](docs/ARCHITECTURE.md)** - Architecture documentation
 - **[AUDITORIA_TECNICA.md](docs/AUDITORIA_TECNICA.md)** - Technical audit report
 - **[AUDITORIA_SEGURIDAD.md](docs/AUDITORIA_SEGURIDAD.md)** - Security audit report
+- **[DEPLOYMENT_MICROSOFT_STORE.md](docs/DEPLOYMENT_MICROSOFT_STORE.md)** - Windows Store deployment
+- **[DEPLOYMENT_IOS_APP_STORE.md](docs/DEPLOYMENT_IOS_APP_STORE.md)** - iOS App Store deployment
+- **[DEPLOYMENT_GOOGLE_PLAY.md](docs/DEPLOYMENT_GOOGLE_PLAY.md)** - Google Play deployment
+- **[WEBSITE_DOCUMENTATION.md](docs/WEBSITE_DOCUMENTATION.md)** - Web deployment (Vercel)
 
 ## 🔒 Security
 

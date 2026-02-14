@@ -30,7 +30,7 @@ final isFavoriteProvider = Provider.family<bool, int>((ref, streamId) {
 /// Provider to check if a specific series is a favorite
 final isSeriesFavoriteProvider = Provider.family<bool, String>((ref, seriesId) {
   final service = ref.watch(favoritesServiceProvider);
-  return service.isSeriesFavorite(seriesId);
+  return service.isFavoriteSeries(seriesId);
 });
 
 /// Provider for favorites count

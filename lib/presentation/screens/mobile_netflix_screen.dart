@@ -517,23 +517,21 @@ class _MobileNetflixScreenState extends ConsumerState<MobileNetflixScreen> {
           return _buildEmptyState('No movie categories available');
         }
 
-        // Auto-select Mi Lista if it has items, otherwise first category
+        // Set initial category synchronously (no postFrameCallback needed)
         if (_selectedVODCategory == null && categories.isNotEmpty) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            final watchlist = ref.read(watchlistProvider);
-            final hasMovies = watchlist.any((w) => w.type == 'movie');
-            setState(() {
-              _selectedVODCategory =
-                  hasMovies ? _miListaId : categories.first.categoryId;
-            });
-          });
+          final watchlist = ref.read(watchlistProvider);
+          final hasMovies = watchlist.any((w) => w.type == 'movie');
+          _selectedVODCategory =
+              hasMovies ? _miListaId : categories.first.categoryId;
         }
+
+        final showWatchlist = _selectedVODCategory == _miListaId;
 
         return Column(
           children: [
             _buildMovieCategoryChips(categories),
             Expanded(
-              child: _selectedVODCategory == _miListaId
+              child: showWatchlist
                   ? _buildWatchlistGrid('movie')
                   : _buildMoviesGrid(_selectedVODCategory),
             ),
@@ -752,23 +750,21 @@ class _MobileNetflixScreenState extends ConsumerState<MobileNetflixScreen> {
           return _buildEmptyState('No series categories available');
         }
 
-        // Auto-select Mi Lista if it has items, otherwise first category
+        // Set initial category synchronously (no postFrameCallback needed)
         if (_selectedSeriesCategory == null && categories.isNotEmpty) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            final watchlist = ref.read(watchlistProvider);
-            final hasSeries = watchlist.any((w) => w.type == 'series');
-            setState(() {
-              _selectedSeriesCategory =
-                  hasSeries ? _miListaId : categories.first.categoryId;
-            });
-          });
+          final watchlist = ref.read(watchlistProvider);
+          final hasSeries = watchlist.any((w) => w.type == 'series');
+          _selectedSeriesCategory =
+              hasSeries ? _miListaId : categories.first.categoryId;
         }
+
+        final showWatchlist = _selectedSeriesCategory == _miListaId;
 
         return Column(
           children: [
             _buildSeriesCategoryChips(categories),
             Expanded(
-              child: _selectedSeriesCategory == _miListaId
+              child: showWatchlist
                   ? _buildWatchlistGrid('series')
                   : _buildSeriesGrid(_selectedSeriesCategory),
             ),

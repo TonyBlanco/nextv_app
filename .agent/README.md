@@ -54,16 +54,42 @@ Welcome to the NeXtv multi-agent development system.
 
 ## Getting Started
 
+### macOS (primary)
 ```bash
-# Open project
-code "D:\NEXTV APP"
-
-# Install dependencies
+cd /Users/luisblancofontela/Development/nextv_app
+export PATH="$HOME/.gemini/antigravity/scratch/flutter_sdk/bin:$PATH"
 flutter pub get
-
-# Build
-flutter build apk --release
+flutter run
 ```
+
+### Windows
+```powershell
+cd $env:USERPROFILE\Development\nextv_app
+flutter pub get
+flutter build windows --release
+```
+
+---
+
+## Installed AI Tools
+
+| Tool | Command | Purpose |
+|------|---------|--------|
+| GitHub Copilot | VS Code extension | Code completion & chat |
+| Claude Code | `claude` | Anthropic AI terminal agent |
+| Copilot CLI | `gh copilot suggest` | Shell suggestions |
+| gh CLI | `gh` | GitHub API from terminal |
+| Gemini | `~/.gemini/` | Google AI agent |
+
+## UI/UX Tools
+
+| Tool | Command | Purpose |
+|------|---------|--------|
+| Figma | `/Applications/Figma.app` | Interface design |
+| Device Preview | `enableDevicePreview = true` in main.dart | Multi-device preview |
+| Widgetbook | `flutter run -t lib/widgetbook/widgetbook_app.dart` | Widget catalog |
+| ImageMagick | `magick` | Image processing |
+| FFmpeg | `ffmpeg` | Video processing |
 
 ---
 
