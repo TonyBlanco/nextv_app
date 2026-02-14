@@ -236,11 +236,11 @@
                     <div class="demo-disclaimer">
                         <h3 style="margin-bottom: var(--spacing-md);">ℹ️  About This Demo</h3>
                         <p style="color: var(--gray-400); line-height: 1.6;">
-                            This demo uses <strong>free, legal public broadcast channels</strong> to showcase NeXtv's beautiful interface and smooth playback. 
-                            The actual app supports your own IPTV provider's content with thousands of channels, movies, series, and catch-up TV.
+                            This demo uses <strong>free test streams and sample videos</strong> to showcase NeXtv's beautiful interface and smooth playback. 
+                            The actual app supports your own IPTV provider's content with thousands of live channels, movies, series, and catch-up TV.
                         </p>
                         <p style="color: var(--gray-400); line-height: 1.6; margin-top: var(--spacing-md);">
-                            <strong>Note:</strong> Some channels may not be available in your region due to geo-restrictions. This is a limitation of the demo content, not our app.
+                            <strong>Note:</strong> These are industry-standard test streams used for video player development. Connect your own IPTV provider to access real content.
                         </p>
                     </div>
                 </div>
@@ -298,64 +298,64 @@
         // Lista de canales públicos y legales para demo
         const demoChannels = [
             {
-                name: "NASA TV",
-                url: "https://ntv1.akamaized.net/hls/live/2014075/NASA-NTV1-HLS/master.m3u8",
-                category: "Education",
-                logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e5/NASA_logo.svg/200px-NASA_logo.svg.png"
+                name: "Big Buck Bunny",
+                url: "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8",
+                category: "Demo",
+                logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c5/Big_buck_bunny_poster_big.jpg/220px-Big_buck_bunny_poster_big.jpg"
             },
             {
-                name: "France 24 (English)",
-                url: "https://cdn.klowdtv.net/803B48A/n1.klowdtv.net/live1/france24_720p/playlist.m3u8",
-                category: "News",
-                logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/France24.svg/200px-France24.svg.png"
+                name: "Sintel Movie",
+                url: "https://bitdash-a.akamaihd.net/content/sintel/hls/playlist.m3u8",
+                category: "Demo",
+                logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3d/Sintel-poster.jpg/220px-Sintel-poster.jpg"
             },
             {
-                name: "Bloomberg TV",
-                url: "https://bloomberg.com/media-manifest/streams/us.m3u8",
-                category: "Business",
-                logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/5/56/Bloomberg_Television_logo.svg/200px-Bloomberg_Television_logo.svg.png"
+                name: "Tears of Steel",
+                url: "https://mango.blender.org/download/",
+                category: "Demo",
+                logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ef/Tears_of_Steel_poster.jpg/220px-Tears_of_Steel_poster.jpg"
             },
             {
-                name: "Al Jazeera English",
-                url: "https://live-hls-web-aje.getaj.net/AJE/index.m3u8",
-                category: "News",
-                logo: "https://upload.wikimedia.org/wikipedia/en/thumb/f/f2/Aljazeera_eng.svg/200px-Aljazeera_eng.svg.png"
+                name: "Elephants Dream",
+                url: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
+                category: "Demo",
+                logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f7/Elephants_Dream_s5_proog.jpg/220px-Elephants_Dream_s5_proog.jpg"
             },
             {
-                name: "Red Bull TV",
-                url: "https://rbmn-live.akamaized.net/hls/live/590964/BoRB-AT/master.m3u8",
-                category: "Sports",
-                logo: "https://i.imgur.com/7kuEDIV.png"
+                name: "Apple Test Stream 1",
+                url: "https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/master.m3u8",
+                category: "Test",
+                logo: "https://www.apple.com/favicon.ico"
             },
             {
-                name: "RT Documentary",
-                url: "https://rt-rtd.rttv.com/live/rtdoc/playlist.m3u8",
-                category: "Documentary",
-                logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a0/Russia-today-logo.svg/200px-Russia-today-logo.svg.png"
+                name: "Apple Test Stream 2",
+                url: "https://devstreaming-cdn.apple.com/videos/streaming/examples/bipbop_4x3/bipbop_4x3_variant.m3u8",
+                category: "Test",
+                logo: "https://www.apple.com/favicon.ico"
             },
             {
-                name: "Fashion TV",
-                url: "https://fashiontv-fashiontv-5-nl.samsung.wurl.tv/playlist.m3u8",
-                category: "Fashion",
-                logo: "https://i.imgur.com/jKrbONf.png"
+                name: "Akamai Test Stream",
+                url: "https://cph-p2p-msl.akamaized.net/hls/live/2000341/test/master.m3u8",
+                category: "Test",
+                logo: "https://www.akamai.com/favicon.ico"
             },
             {
-                name: "BBC News",
-                url: "https://vs-cmaf-pushb-uk-live.akamaized.net/x=4/i=urn:bbc:pips:service:bbc_news_channel_hd/iptv_hd_abr_v1.mpd",
-                category: "News",
+                name: "BBC Test Card",
+                url: "https://rdmedia.bbc.co.uk/testcard/simulcast/manifests/avc-full.m3u8",
+                category: "Test",
                 logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/6/62/BBC_News_2019.svg/200px-BBC_News_2019.svg.png"
             },
             {
-                name: "Tastemade",
-                url: "https://tastemade-es8intl-roku.amagi.tv/playlist.m3u8",
-                category: "Food",
-                logo: "https://i.imgur.com/8s6aRwP.png"
+                name: "Caminandes (Blender)",
+                url: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
+                category: "Demo",
+                logo: "https://www.blender.org/favicon.ico"
             },
             {
-                name: "Global Fashion Channel",
-                url: "https://gfcomnimedia-f.akamaihd.net/i/gfceurope_adapt@1396/master.m3u8",
-                category: "Fashion",
-                logo: "https://i.imgur.com/s6d8myG.png"
+                name: "Sample Video",
+                url: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4",
+                category: "Demo",
+                logo: "https://www.blender.org/favicon.ico"
             }
         ];
 

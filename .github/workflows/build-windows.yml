@@ -1,0 +1,67 @@
+name: Build Windows App
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_msix:
+        description: 'Also build MSIX installer'
+        required: false
+        default: 'true'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
+
+jobs:
+  build-windows:
+    name: Build Windows
+    runs-on: windows-latest
+    timeout-minutes: 40
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.0'
+          channel: 'stable'
+          cache: true
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Analyze code
+        run: flutter analyze --no-fatal-infos
+        continue-on-error: true
+
+      - name: Build Windows Release
+        run: flutter build windows --release
+
+      - name: Create MSIX installer
+        if: inputs.build_msix == 'true'
+        run: |
+          flutter pub add --dev msix
+          dart run msix:create --display-name "NexTV" --publisher-display-name "NeXtv" --identity-name "com.nextv.app" --version "1.0.0.0"
+        continue-on-error: true
+
+      - name: Archive Windows build
+        run: Compress-Archive -Path build\windows\x64\runner\Release\* -DestinationPath NexTV-Windows.zip
+        shell: pwsh
+
+      - name: Upload Windows ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: NexTV-Windows
+          path: NexTV-Windows.zip
+          retention-days: 30
+
+      - name: Upload MSIX
+        if: inputs.build_msix == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: NexTV-MSIX
+          path: build/windows/x64/runner/Release/*.msix
+          retention-days: 30
+          if-no-files-found: ignore

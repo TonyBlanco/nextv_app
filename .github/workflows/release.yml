@@ -113,3 +113,64 @@ jobs:
         with:
           name: ios-ipa
           path: build/ios/iphoneos/nextv-ios.ipa
+
+  build-windows-release:
+    name: Build Windows Release
+    runs-on: windows-latest
+    needs: create-release
+    timeout-minutes: 40
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.0'
+          channel: 'stable'
+          cache: true
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Build Windows Release
+        run: flutter build windows --release
+
+      - name: Create MSIX installer
+        run: |
+          flutter pub add --dev msix
+          dart run msix:create --display-name "NexTV" --publisher-display-name "NeXtv" --identity-name "com.nextv.app" --version "1.0.0.0" --logo-path "assets/images/nextv_icon.png"
+        continue-on-error: true
+
+      - name: Archive Windows build
+        run: Compress-Archive -Path build\windows\x64\runner\Release\* -DestinationPath NexTV-Windows.zip
+        shell: pwsh
+
+      - name: Upload Windows ZIP to Release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create-release.outputs.upload_url }}
+          asset_path: NexTV-Windows.zip
+          asset_name: NexTV-Windows.zip
+          asset_content_type: application/zip
+
+      - name: Upload MSIX to Release
+        if: success()
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create-release.outputs.upload_url }}
+          asset_path: build/windows/x64/runner/Release/nextv_app.msix
+          asset_name: NexTV-Setup.msix
+          asset_content_type: application/msix
+        continue-on-error: true
+
+      - name: Upload Windows Build to Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-build
+          path: NexTV-Windows.zip
