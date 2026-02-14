@@ -1,0 +1,13 @@
+{
+  "name": "nextv-website",
+  "version": "1.0.0",
+  "description": "NeXtv Official Website - Modern IPTV Player",
+  "main": "index.html",
+  "scripts": {
+    "dev": "npx serve .",
+    "deploy": "vercel --prod"
+  },
+  "keywords": ["nextv", "iptv", "streaming", "player"],
+  "author": "NeXtv Team",
+  "license": "MIT"
+}

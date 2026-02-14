@@ -8,6 +8,8 @@ import '../../core/providers/category_providers.dart';
 import '../../core/providers/active_playlist_provider.dart';
 import '../../core/services/xtream_api_service.dart';
 import '../widgets/nextv_logo.dart';
+import '../widgets/favorite_button.dart';
+import '../../core/providers/favorites_provider.dart';
 import 'player_screen.dart';
 import 'settings_screen.dart';
 import 'mobile_series_detail_screen.dart';
@@ -19,7 +21,8 @@ class MobileNetflixScreen extends ConsumerStatefulWidget {
   const MobileNetflixScreen({super.key});
 
   @override
-  ConsumerState<MobileNetflixScreen> createState() => _MobileNetflixScreenState();
+  ConsumerState<MobileNetflixScreen> createState() =>
+      _MobileNetflixScreenState();
 }
 
 class _MobileNetflixScreenState extends ConsumerState<MobileNetflixScreen> {
@@ -27,6 +30,17 @@ class _MobileNetflixScreenState extends ConsumerState<MobileNetflixScreen> {
   String? _selectedLiveCategory;
   String? _selectedVODCategory;
   String? _selectedSeriesCategory;
+
+  // Search for Live TV channels (TiviMate-style)
+  final TextEditingController _liveSearchController = TextEditingController();
+  String _liveSearchQuery = '';
+  bool _showLiveSearch = false;
+
+  @override
+  void dispose() {
+    _liveSearchController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -62,7 +76,8 @@ class _MobileNetflixScreenState extends ConsumerState<MobileNetflixScreen> {
           const NextvLogo(size: 24, showText: true, withGlow: false),
           const Spacer(),
           IconButton(
-            icon: const Icon(Icons.settings_outlined, color: Colors.white70, size: 24),
+            icon: const Icon(Icons.settings_outlined,
+                color: Colors.white70, size: 24),
             onPressed: () {
               Navigator.push(
                 context,
@@ -94,34 +109,41 @@ class _MobileNetflixScreenState extends ConsumerState<MobileNetflixScreen> {
   // ========== LIVE TV TAB ==========
   Widget _buildLiveTVTab() {
     final categoriesAsync = ref.watch(liveCategoriesProvider);
-    
+
     return categoriesAsync.when(
       data: (categories) {
         if (categories.isEmpty) {
           return _buildEmptyState('No live categories available');
         }
 
-        // Auto-select first category if none selected
-        if (_selectedLiveCategory == null && categories.isNotEmpty) {
+        // Auto-select Favorites as default (if user has any), otherwise first category
+        if (_selectedLiveCategory == null) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
+            final favCount = ref.read(favoritesCountProvider);
             setState(() {
-              _selectedLiveCategory = categories.first.categoryId;
+              _selectedLiveCategory =
+                  favCount > 0 ? '__favorites__' : categories.first.categoryId;
             });
           });
         }
 
         return Column(
           children: [
-            // Category selector (using dynamic to handle different category types)
-            _buildCategoryChips(
-              categories: categories,
-              selectedId: _selectedLiveCategory,
-              onSelect: (id) => setState(() => _selectedLiveCategory = id),
-            ),
-            // Channels list
-            Expanded(
-              child: _buildLiveChannelsList(_selectedLiveCategory),
-            ),
+            // Search bar (TiviMate-style)
+            _buildLiveSearchBar(),
+            // If searching, show search results across all channels
+            if (_liveSearchQuery.length >= 2)
+              Expanded(child: _buildLiveSearchResults())
+            else ...[
+              // Category selector with ⭐ Favoritos as first option
+              _buildLiveCategoryChips(categories),
+              // Channels list (favorites or regular category)
+              Expanded(
+                child: _selectedLiveCategory == '__favorites__'
+                    ? _buildFavoritesChannelsList()
+                    : _buildLiveChannelsList(_selectedLiveCategory),
+              ),
+            ],
           ],
         );
       },
@@ -129,6 +151,223 @@ class _MobileNetflixScreenState extends ConsumerState<MobileNetflixScreen> {
         child: CircularProgressIndicator(color: NextvColors.accent),
       ),
       error: (error, stack) => _buildEmptyState('Error loading categories'),
+    );
+  }
+
+  /// Search bar for filtering live channels by name
+  Widget _buildLiveSearchBar() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: TextField(
+        controller: _liveSearchController,
+        style: const TextStyle(color: Colors.white, fontSize: 14),
+        decoration: InputDecoration(
+          hintText: 'Buscar canales...',
+          hintStyle: TextStyle(color: Colors.white.withOpacity(0.4)),
+          prefixIcon: const Icon(Icons.search, color: Colors.white54, size: 20),
+          suffixIcon: _liveSearchQuery.isNotEmpty
+              ? IconButton(
+                  icon:
+                      const Icon(Icons.clear, color: Colors.white54, size: 20),
+                  onPressed: () {
+                    _liveSearchController.clear();
+                    setState(() => _liveSearchQuery = '');
+                  },
+                )
+              : null,
+          filled: true,
+          fillColor: NextvColors.surface,
+          contentPadding:
+              const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: BorderSide.none,
+          ),
+        ),
+        onChanged: (value) {
+          setState(() => _liveSearchQuery = value.trim());
+        },
+      ),
+    );
+  }
+
+  /// Search results across ALL categories (lazy — only loads current category channels)
+  Widget _buildLiveSearchResults() {
+    if (_selectedLiveCategory == null) return const SizedBox();
+
+    // Search within currently loaded category streams
+    final streamsAsync =
+        ref.watch(liveCategoryStreamsProvider(_selectedLiveCategory!));
+
+    return streamsAsync.when(
+      data: (streams) {
+        final query = _liveSearchQuery.toLowerCase();
+        final filtered =
+            streams.where((s) => s.name.toLowerCase().contains(query)).toList();
+
+        if (filtered.isEmpty) {
+          return _buildEmptyState('No channels match "$_liveSearchQuery"');
+        }
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              child: Text(
+                '${filtered.length} resultado${filtered.length == 1 ? "" : "s"}',
+                style: TextStyle(
+                    color: Colors.white.withOpacity(0.5), fontSize: 12),
+              ),
+            ),
+            Expanded(
+              child: ListView.builder(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                itemCount: filtered.length,
+                itemBuilder: (context, index) =>
+                    _buildChannelCard(filtered[index]),
+              ),
+            ),
+          ],
+        );
+      },
+      loading: () => const Center(
+        child: CircularProgressIndicator(color: NextvColors.accent),
+      ),
+      error: (_, __) => _buildEmptyState('Error searching channels'),
+    );
+  }
+
+  /// Category chips with ⭐ Favoritos as the first chip
+  Widget _buildLiveCategoryChips(List<dynamic> categories) {
+    final favCount = ref.watch(favoritesCountProvider);
+
+    return Container(
+      height: 50,
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        itemCount: categories.length + 1, // +1 for Favorites
+        itemBuilder: (context, index) {
+          // First chip = Favoritos
+          if (index == 0) {
+            final isSelected = _selectedLiveCategory == '__favorites__';
+            return Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: ChoiceChip(
+                avatar: Icon(
+                  Icons.star,
+                  size: 16,
+                  color: isSelected ? Colors.black : Colors.amber,
+                ),
+                label: Text('Favoritos${favCount > 0 ? " ($favCount)" : ""}'),
+                selected: isSelected,
+                onSelected: (selected) {
+                  if (selected) {
+                    setState(() => _selectedLiveCategory = '__favorites__');
+                  }
+                },
+                selectedColor: Colors.amber,
+                backgroundColor: NextvColors.surface,
+                labelStyle: TextStyle(
+                  color: isSelected ? Colors.black : Colors.white70,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                  fontSize: 14,
+                ),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              ),
+            );
+          }
+
+          // Regular categories (offset by 1)
+          final category = categories[index - 1];
+          final id = category.categoryId;
+          final name = category.categoryName;
+          final isSelected = _selectedLiveCategory == id;
+
+          return Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: ChoiceChip(
+              label: Text(name),
+              selected: isSelected,
+              onSelected: (selected) {
+                if (selected) {
+                  setState(() => _selectedLiveCategory = id);
+                }
+              },
+              selectedColor: NextvColors.accent,
+              backgroundColor: NextvColors.surface,
+              labelStyle: TextStyle(
+                color: isSelected ? Colors.black : Colors.white70,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                fontSize: 14,
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  /// Shows the user's favorite channels
+  Widget _buildFavoritesChannelsList() {
+    final favoritesAsync = ref.watch(favoritesProvider);
+
+    return favoritesAsync.when(
+      data: (favorites) {
+        if (favorites.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.star_border, size: 64, color: Colors.amber),
+                const SizedBox(height: 16),
+                const Text(
+                  'No tienes favoritos',
+                  style: TextStyle(color: Colors.white, fontSize: 18),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Toca la ⭐ en cualquier canal para agregarlo',
+                  style: TextStyle(
+                      color: Colors.white.withOpacity(0.5), fontSize: 14),
+                ),
+              ],
+            ),
+          );
+        }
+
+        // Convert FavoriteChannel to LiveStream for the channel card
+        return ListView.builder(
+          padding: const EdgeInsets.all(16),
+          itemCount: favorites.length,
+          itemBuilder: (context, index) {
+            final fav = favorites[index];
+            final stream = LiveStream(
+              streamId: fav.streamId,
+              name: fav.name,
+              streamIcon: fav.icon,
+              categoryId: fav.categoryId,
+              streamType: 'live',
+              epgChannelId: 0,
+              customSid: '',
+              tvArchive: 0,
+              directSource: '',
+              tvArchiveDuration: 0,
+              added: 0,
+              num: 0,
+            );
+            return _buildChannelCard(stream);
+          },
+        );
+      },
+      loading: () => const Center(
+        child: CircularProgressIndicator(color: Colors.amber),
+      ),
+      error: (_, __) => _buildEmptyState('Error loading favorites'),
     );
   }
 
@@ -199,8 +438,10 @@ class _MobileNetflixScreenState extends ConsumerState<MobileNetflixScreen> {
                             ),
                           ),
                         ),
-                        errorWidget: (context, url, error) => _buildPlaceholderIcon(),
-                        memCacheWidth: 120, // Cache at 2x resolution for retina displays
+                        errorWidget: (context, url, error) =>
+                            _buildPlaceholderIcon(),
+                        memCacheWidth:
+                            120, // Cache at 2x resolution for retina displays
                         maxWidthDiskCache: 120,
                       )
                     : _buildPlaceholderIcon(),
@@ -232,10 +473,18 @@ class _MobileNetflixScreenState extends ConsumerState<MobileNetflixScreen> {
                   ],
                 ),
               ),
+              // Favorite button (⭐)
+              FavoriteButton(
+                stream: stream,
+                size: 22,
+                activeColor: Colors.amber,
+                inactiveColor: Colors.white30,
+              ),
+              const SizedBox(width: 4),
               // Play button
               Container(
-                width: 48,
-                height: 48,
+                width: 44,
+                height: 44,
                 decoration: BoxDecoration(
                   color: NextvColors.accent.withOpacity(0.2),
                   shape: BoxShape.circle,
@@ -243,7 +492,7 @@ class _MobileNetflixScreenState extends ConsumerState<MobileNetflixScreen> {
                 child: const Icon(
                   Icons.play_arrow,
                   color: NextvColors.accent,
-                  size: 28,
+                  size: 26,
                 ),
               ),
             ],
@@ -256,7 +505,7 @@ class _MobileNetflixScreenState extends ConsumerState<MobileNetflixScreen> {
   // ========== MOVIES TAB ==========
   Widget _buildMoviesTab() {
     final categoriesAsync = ref.watch(vodCategoriesProvider);
-    
+
     return categoriesAsync.when(
       data: (categories) {
         if (categories.isEmpty) {
@@ -296,7 +545,7 @@ class _MobileNetflixScreenState extends ConsumerState<MobileNetflixScreen> {
     if (categoryId == null) return const SizedBox();
 
     final api = ref.watch(xtreamAPIProvider);
-    
+
     return FutureBuilder<List<VODStream>>(
       future: api.getVODStreams(categoryId: categoryId),
       builder: (context, snapshot) {
@@ -430,7 +679,8 @@ class _MobileNetflixScreenState extends ConsumerState<MobileNetflixScreen> {
       loading: () => const Center(
         child: CircularProgressIndicator(color: NextvColors.accent),
       ),
-      error: (error, stack) => _buildEmptyState('Error loading series categories'),
+      error: (error, stack) =>
+          _buildEmptyState('Error loading series categories'),
     );
   }
 
@@ -604,7 +854,7 @@ class _MobileNetflixScreenState extends ConsumerState<MobileNetflixScreen> {
           // Determine if we have categoryId/Name, handle both Live/VOD models
           final id = category.categoryId;
           final name = category.categoryName;
-          
+
           final isSelected = selectedId == id;
 
           return Padding(
@@ -661,7 +911,7 @@ class _MobileNetflixScreenState extends ConsumerState<MobileNetflixScreen> {
 
   Widget _buildNavItem(int index, IconData icon, String label) {
     final isSelected = _currentTab == index;
-    
+
     return Expanded(
       child: InkWell(
         onTap: () => setState(() => _currentTab = index),
@@ -726,7 +976,8 @@ class _MobileNetflixScreenState extends ConsumerState<MobileNetflixScreen> {
     final creds = playlist.toXtreamCredentials;
     if (creds == null) return;
 
-    final url = '${creds.serverUrl}/live/${creds.username}/${creds.password}/${stream.streamId}.m3u8';
+    final url =
+        '${creds.serverUrl}/live/${creds.username}/${creds.password}/${stream.streamId}.m3u8';
 
     Navigator.push(
       context,
@@ -755,7 +1006,8 @@ class _MobileNetflixScreenState extends ConsumerState<MobileNetflixScreen> {
     // Use the container extension as-is (mp4, mkv, etc.)
     // The PlayerScreen will try fallback formats if the first one fails
     final extension = movie.containerExtension;
-    final url = '${creds.serverUrl}/movie/${creds.username}/${creds.password}/${movie.streamId}.$extension';
+    final url =
+        '${creds.serverUrl}/movie/${creds.username}/${creds.password}/${movie.streamId}.$extension';
 
     Navigator.push(
       context,

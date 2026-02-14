@@ -14,8 +14,8 @@ import '../../core/providers/channel_providers.dart';
 
 /// Metadata passed to PlayerScreen for watch history tracking
 class PlayerMeta {
-  final String id;         // "vod_123" or "series_456_ep_789"
-  final String type;       // 'movie' | 'episode' | 'catchup'
+  final String id; // "vod_123" or "series_456_ep_789"
+  final String type; // 'movie' | 'episode' | 'catchup'
   final String title;
   final String? seriesName;
   final String imageUrl;
@@ -48,9 +48,9 @@ class PlayerScreen extends ConsumerStatefulWidget {
 }
 
 class _PlayerScreenState extends ConsumerState<PlayerScreen> {
-  // video_player (AVPlayer) - used on non-iOS or live streams
+  // video_player (AVPlayer) - used on non-iOS platforms
   VideoPlayerController? _controller;
-  // MediaKit player - used on iOS for movies (supports MKV, AVI, etc. via mpv/ffmpeg)
+  // MediaKit player (mpv/ffmpeg) - used on iOS for ALL content (live + VOD)
   mk.Player? _mkPlayer;
   mkv.VideoController? _mkController;
   bool _useMediaKit = false;
@@ -70,6 +70,12 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   StreamSubscription? _mkPlayingSub;
   StreamSubscription? _mkCompletedSub;
   StreamSubscription? _mkErrorSub;
+
+  // TiviMate-style reconnection for live streams
+  DateTime? _lastProgressTime;
+  int _reconnectAttempts = 0;
+  Timer? _stallDetectorTimer;
+  static const int _maxReconnectAttempts = 5;
 
   @override
   void initState() {
@@ -108,45 +114,51 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     // Also detect live from URL pattern
     if (url.contains('/live/')) _isLive = true;
 
-    // On iOS, use MediaKit for movies/episodes/catchup (supports MKV, AVI, etc.)
-    // AVPlayer (video_player) only supports MP4/HLS on iOS
+    // On iOS, use MediaKit (mpv/ffmpeg) for ALL content — live AND VOD
+    // mpv handles live HLS/MPEG-TS, reconnection, MKV, AVI, etc. far better than AVPlayer
     final isIOS = !kIsWeb && Platform.isIOS;
-    final isVOD = widget.meta != null &&
-        (widget.meta!.type == 'movie' || widget.meta!.type == 'episode' || widget.meta!.type == 'catchup');
 
-    if (isIOS && isVOD) {
+    if (isIOS) {
       await _initializeMediaKitPlayer(url);
     } else {
       await _initializeVideoPlayer(url);
     }
   }
 
-  /// Initialize MediaKit player (iOS movies) with 30s buffering
-  /// Uses mpv/ffmpeg backend - supports MKV, AVI, FLV, etc.
+  /// Initialize MediaKit player (iOS — all content: live + VOD)
+  /// Uses mpv/ffmpeg backend — handles HLS, MPEG-TS, MKV, AVI, etc.
+  /// TiviMate-style: auto-reconnect, stall detection, keep-open for live
   Future<void> _initializeMediaKitPlayer(String url) async {
     _useMediaKit = true;
-    debugPrint('🎬 MediaKit Player: $url');
-    debugPrint('📦 Buffer: 30s demuxer-readahead for smooth movie playback');
+    debugPrint('🎬 MediaKit Player (${_isLive ? "LIVE" : "VOD"}): $url');
 
     try {
       _mkPlayer = mk.Player(
-        configuration: const mk.PlayerConfiguration(
-          // 32 MB buffer for smooth movie playback (original user request!)
-          bufferSize: 32 * 1024 * 1024,
+        configuration: mk.PlayerConfiguration(
+          // 64MB for live (need headroom for reconnect), 32MB for VOD
+          bufferSize: _isLive ? 64 * 1024 * 1024 : 32 * 1024 * 1024,
         ),
       );
 
+      // Configure mpv properties for live IPTV (TiviMate-style)
+      if (_isLive) {
+        await _configureMpvForLive(_mkPlayer!);
+      }
+
       _mkController = mkv.VideoController(_mkPlayer!);
 
-      // Listen for streams
+      // --- Stream listeners ---
       _mkPositionSub = _mkPlayer!.stream.position.listen((pos) {
         if (mounted && pos != _lastPosition) {
+          _lastProgressTime = DateTime.now(); // stall detection
+          _reconnectAttempts = 0; // reset on progress
           setState(() => _lastPosition = pos);
         }
       });
 
       _mkDurationSub = _mkPlayer!.stream.duration.listen((dur) {
-        if (mounted && dur.inSeconds > 0) {
+        // Ignore duration for live — it's meaningless (HLS window)
+        if (mounted && !_isLive && dur.inSeconds > 0) {
           setState(() => _totalDuration = dur);
         }
       });
@@ -157,19 +169,29 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         }
       });
 
+      // CRITICAL FIX: Don't stop playback on "completed" for live streams.
+      // Live HLS "completes" at edge of sliding window → reconnect instead.
       _mkCompletedSub = _mkPlayer!.stream.completed.listen((completed) {
         if (mounted && completed) {
-          setState(() => _isPlaying = false);
+          if (_isLive) {
+            debugPrint('🔄 Live stream "completed" event → reconnecting...');
+            _reconnectLiveStream();
+          } else {
+            setState(() => _isPlaying = false);
+          }
         }
       });
 
       _mkErrorSub = _mkPlayer!.stream.error.listen((error) {
         if (mounted && error.isNotEmpty) {
           debugPrint('❌ MediaKit error: $error');
+          if (_isLive) {
+            _reconnectLiveStream();
+          }
         }
       });
 
-      // Open the media with user-agent header
+      // Open the media
       await _mkPlayer!.open(mk.Media(
         url,
         httpHeaders: {
@@ -177,8 +199,10 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         },
       ));
 
-      // Seek to start position if provided
-      if (widget.startPosition != null && widget.startPosition!.inSeconds > 0) {
+      // Seek to start position if provided (VOD only)
+      if (!_isLive &&
+          widget.startPosition != null &&
+          widget.startPosition!.inSeconds > 0) {
         await Future.delayed(const Duration(milliseconds: 500));
         await _mkPlayer!.seek(widget.startPosition!);
       }
@@ -188,19 +212,129 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         _isPlaying = true;
       });
 
-      // Start periodic position saving every 30 seconds
-      _positionSaveTimer = Timer.periodic(
-        const Duration(seconds: 30),
-        (_) => _saveCurrentPosition(),
-      );
+      // Start stall detection for live (TiviMate-style)
+      if (_isLive) {
+        _startStallDetection();
+      }
+
+      // Save position periodically (VOD only)
+      if (!_isLive) {
+        _positionSaveTimer = Timer.periodic(
+          const Duration(seconds: 30),
+          (_) => _saveCurrentPosition(),
+        );
+      }
 
       _resetHideControlsTimer();
-      debugPrint('✅ MediaKit Player initialized with 30s buffer');
+      debugPrint(
+          '✅ MediaKit Player initialized (${_isLive ? "LIVE+reconnect" : "VOD+32MB buffer"})');
     } catch (e) {
       debugPrint('❌ MediaKit Error: $e');
       if (mounted) {
-        setState(() => _errorMessage = 'Error al reproducir.\n\nPrueba otro contenido.');
+        setState(() =>
+            _errorMessage = 'Error al reproducir.\n\nPrueba otro contenido.');
       }
+    }
+  }
+
+  /// Configure mpv for robust live IPTV streaming (TiviMate-style)
+  /// Sets reconnection, buffering, keep-open to prevent stream termination
+  Future<void> _configureMpvForLive(mk.Player player) async {
+    try {
+      // Access the NativePlayer to set mpv properties directly
+      final nativePlayer = player.platform as dynamic;
+
+      // Auto-reconnect on network errors (libavformat level)
+      await nativePlayer.setProperty(
+          'stream-lavf-o',
+          'reconnect=1,'
+              'reconnect_streamed=1,'
+              'reconnect_delay_max=5,'
+              'reconnect_on_network_error=1,'
+              'reconnect_on_http_error=4xx,5xx');
+
+      // Buffer settings for live — enough headroom for brief stalls
+      await nativePlayer.setProperty('cache', 'yes');
+      await nativePlayer.setProperty('cache-secs', '30');
+      await nativePlayer.setProperty('demuxer-max-bytes', '64MiB');
+      await nativePlayer.setProperty('demuxer-readahead-secs', '30');
+
+      // HLS: use max bitrate for best quality
+      await nativePlayer.setProperty('hls-bitrate', 'max');
+
+      // CRITICAL: Don't close the player when live stream "ends"
+      await nativePlayer.setProperty('keep-open', 'yes');
+      await nativePlayer.setProperty('keep-open-pause', 'no');
+
+      // Network timeout
+      await nativePlayer.setProperty('network-timeout', '30');
+
+      // User-agent (matches IPTV Smarters)
+      await nativePlayer.setProperty('user-agent', 'smartersplayer');
+
+      debugPrint(
+          '✅ mpv configured for live IPTV (reconnect + keep-open + 30s cache)');
+    } catch (e) {
+      // setProperty may fail on some mpv builds — non-fatal
+      debugPrint('⚠️ mpv property config partial: $e');
+    }
+  }
+
+  /// TiviMate-style stall detection: monitors position progress,
+  /// triggers reconnect if no progress for 15 seconds
+  void _startStallDetection() {
+    _lastProgressTime = DateTime.now();
+    _stallDetectorTimer?.cancel();
+
+    _stallDetectorTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+      if (_lastProgressTime == null || !_isLive || !mounted) return;
+
+      final stalledFor = DateTime.now().difference(_lastProgressTime!);
+
+      if (stalledFor > const Duration(seconds: 15)) {
+        debugPrint(
+            '🔄 Stall detected (${stalledFor.inSeconds}s without progress)');
+        _reconnectLiveStream();
+      }
+    });
+  }
+
+  /// Reconnect live stream with exponential backoff (1s, 2s, 4s, 8s, 16s)
+  Future<void> _reconnectLiveStream() async {
+    if (_reconnectAttempts >= _maxReconnectAttempts) {
+      debugPrint('❌ Max reconnect attempts ($_maxReconnectAttempts) reached');
+      if (mounted) {
+        setState(() => _errorMessage =
+            'Canal sin señal.\n\nIntenta otro canal o vuelve más tarde.');
+      }
+      return;
+    }
+
+    _reconnectAttempts++;
+    final delay =
+        Duration(seconds: 1 << (_reconnectAttempts - 1)); // 1, 2, 4, 8, 16s
+    debugPrint(
+        '🔄 Reconnect attempt $_reconnectAttempts/$_maxReconnectAttempts (delay: ${delay.inSeconds}s)');
+
+    await Future.delayed(delay);
+
+    if (!mounted || _currentUrl == null) return;
+
+    try {
+      if (_useMediaKit && _mkPlayer != null) {
+        // Re-open the stream (mpv handles cleanup)
+        await _mkPlayer!.open(mk.Media(_currentUrl!, httpHeaders: {
+          'User-Agent': 'smartersplayer',
+        }));
+        _lastProgressTime = DateTime.now();
+        debugPrint('✅ Reconnected to live stream');
+      } else if (_controller != null) {
+        await _controller!.seekTo(Duration.zero);
+        await _controller!.play();
+        _lastProgressTime = DateTime.now();
+      }
+    } catch (e) {
+      debugPrint('❌ Reconnect failed: $e');
     }
   }
 
@@ -220,9 +354,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       );
 
       await _controller!.initialize().timeout(
-        const Duration(seconds: 15),
-        onTimeout: () => throw TimeoutException('Stream timeout'),
-      );
+            const Duration(seconds: 15),
+            onTimeout: () => throw TimeoutException('Stream timeout'),
+          );
 
       if (!mounted) return;
 
@@ -251,7 +385,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     } on TimeoutException {
       debugPrint('⏱️ VideoPlayer timeout');
       if (mounted) {
-        setState(() => _errorMessage = 'El contenido tardó demasiado.\n\nPrueba más tarde.');
+        setState(() => _errorMessage =
+            'El contenido tardó demasiado.\n\nPrueba más tarde.');
       }
     } catch (e) {
       debugPrint('❌ VideoPlayer error: $e');
@@ -266,7 +401,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         friendlyError = 'Formato no compatible';
       }
       if (mounted) {
-        setState(() => _errorMessage = '$friendlyError\n\nPrueba otro contenido.');
+        setState(
+            () => _errorMessage = '$friendlyError\n\nPrueba otro contenido.');
       }
     }
   }
@@ -286,7 +422,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       // For live streams: never mark as "completed" — the stream is ongoing.
       // Also auto-restart if the player reports not playing (network hiccup).
       if (_isLive) {
-        if (!_controller!.value.isPlaying && !_controller!.value.isBuffering && _isPlaying) {
+        if (!_controller!.value.isPlaying &&
+            !_controller!.value.isBuffering &&
+            _isPlaying) {
           // Live stream stalled — try to resume
           debugPrint('🔄 Live stream stalled, restarting playback...');
           _controller!.play();
@@ -323,7 +461,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     try {
       final service = ref.read(watchHistoryServiceProvider);
       await service.addOrUpdate(item);
-      debugPrint('Saved position: ${_lastPosition.inSeconds}s / ${_totalDuration?.inSeconds ?? "?"}s');
+      debugPrint(
+          'Saved position: ${_lastPosition.inSeconds}s / ${_totalDuration?.inSeconds ?? "?"}s');
     } catch (e) {
       debugPrint('Error saving position: $e');
     }
@@ -398,6 +537,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
     _hideControlsTimer?.cancel();
     _positionSaveTimer?.cancel();
+    _stallDetectorTimer?.cancel();
     _saveCurrentPosition();
 
     if (_useMediaKit) {
@@ -477,7 +617,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
               top: MediaQuery.of(context).padding.top + 10,
               left: 10,
               child: IconButton(
-                icon: const Icon(Icons.arrow_back, color: Colors.white, size: 30),
+                icon:
+                    const Icon(Icons.arrow_back, color: Colors.white, size: 30),
                 onPressed: () => Navigator.of(context).pop(),
               ),
             ),
@@ -521,13 +662,15 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                       child: Row(
                         children: [
                           IconButton(
-                            icon: const Icon(Icons.arrow_back, color: Colors.white),
+                            icon: const Icon(Icons.arrow_back,
+                                color: Colors.white),
                             onPressed: () => Navigator.of(context).pop(),
                           ),
                           Expanded(
                             child: Text(
                               widget.meta?.title ?? widget.stream?.name ?? '',
-                              style: const TextStyle(color: Colors.white, fontSize: 16),
+                              style: const TextStyle(
+                                  color: Colors.white, fontSize: 16),
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
@@ -542,7 +685,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                       child: IconButton(
                         iconSize: 64,
                         icon: Icon(
-                          _isPlaying ? Icons.pause_circle_filled : Icons.play_circle_filled,
+                          _isPlaying
+                              ? Icons.pause_circle_filled
+                              : Icons.play_circle_filled,
                           color: Colors.white,
                         ),
                         onPressed: _togglePlayPause,
@@ -559,11 +704,13 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                           if (_isLive)
                             // LIVE indicator — no seek bar
                             Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 8),
                               child: Row(
                                 children: [
                                   Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 10, vertical: 4),
                                     decoration: BoxDecoration(
                                       color: Colors.red,
                                       borderRadius: BorderRadius.circular(4),
@@ -571,7 +718,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                                     child: const Row(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
-                                        Icon(Icons.circle, color: Colors.white, size: 8),
+                                        Icon(Icons.circle,
+                                            color: Colors.white, size: 8),
                                         SizedBox(width: 6),
                                         Text(
                                           'LIVE',
@@ -590,28 +738,38 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                           else
                             // VOD progress bar with seek
                             Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 16),
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 16),
                               child: Row(
                                 children: [
                                   Text(
                                     _formatDuration(_lastPosition),
-                                    style: const TextStyle(color: Colors.white, fontSize: 12),
+                                    style: const TextStyle(
+                                        color: Colors.white, fontSize: 12),
                                   ),
                                   Expanded(
                                     child: Slider(
-                                      value: _lastPosition.inSeconds.toDouble().clamp(
-                                          0, (_totalDuration?.inSeconds ?? 1).toDouble()),
-                                      max: (_totalDuration?.inSeconds ?? 1).toDouble(),
+                                      value: _lastPosition.inSeconds
+                                          .toDouble()
+                                          .clamp(
+                                              0,
+                                              (_totalDuration?.inSeconds ?? 1)
+                                                  .toDouble()),
+                                      max: (_totalDuration?.inSeconds ?? 1)
+                                          .toDouble(),
                                       onChanged: (value) {
-                                        _seekTo(Duration(seconds: value.toInt()));
+                                        _seekTo(
+                                            Duration(seconds: value.toInt()));
                                       },
                                       activeColor: Colors.red,
                                       inactiveColor: Colors.white30,
                                     ),
                                   ),
                                   Text(
-                                    _formatDuration(_totalDuration ?? Duration.zero),
-                                    style: const TextStyle(color: Colors.white, fontSize: 12),
+                                    _formatDuration(
+                                        _totalDuration ?? Duration.zero),
+                                    style: const TextStyle(
+                                        color: Colors.white, fontSize: 12),
                                   ),
                                 ],
                               ),
