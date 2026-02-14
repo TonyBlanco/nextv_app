@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Try NeXtv Demo - Experience our IPTV player with live channels">
+    <title>Try NeXtv Demo | Live Channel Player</title>
+    <link rel="icon" type="image/png" href="../images/favicon.png">
+    <link rel="stylesheet" href="../css/styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <style>
+        .demo-page {
+            padding: 120px 0 var(--spacing-4xl);
+            min-height: 100vh;
+        }
+        
+        .demo-header {
+            text-align: center;
+            margin-bottom: var(--spacing-3xl);
+        }
+        
+        .demo-container {
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            gap: var(--spacing-2xl);
+            align-items: start;
+        }
+        
+        .player-section {
+            background: var(--gray-900);
+            border-radius: var(--radius-xl);
+            overflow: hidden;
+            box-shadow: var(--shadow-2xl);
+        }
+        
+        #videoPlayer {
+            width: 100%;
+            aspect-ratio: 16 / 9;
+            background: var(--black);
+        }
+        
+        .player-info {
+            padding: var(--spacing-xl);
+            background: var(--gray-800);
+        }
+        
+        .channel-name {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--white);
+            margin-bottom: var(--spacing-sm);
+        }
+        
+        .channel-category {
+            font-size: 0.875rem;
+            color: var(--gray-400);
+        }
+        
+        .channels-list {
+            background: var(--gray-900);
+            border-radius: var(--radius-xl);
+            padding: var(--spacing-lg);
+            max-height: 600px;
+            overflow-y: auto;
+        }
+        
+        .channels-list h3 {
+            font-size: 1.125rem;
+            margin-bottom: var(--spacing-lg);
+            color: var(--white);
+        }
+        
+        .channel-item {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-md);
+            padding: var(--spacing-md);
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            transition: all var(--transition-base);
+            border: 2px solid transparent;
+        }
+        
+        .channel-item:hover {
+            background: var(--gray-800);
+        }
+        
+        .channel-item.active {
+            background: var(--gray-800);
+            border-color: var(--primary);
+        }
+        
+        .channel-logo {
+            width: 48px;
+            height: 48px;
+            border-radius: var(--radius-sm);
+            object-fit: cover;
+            background: var(--gray-700);
+        }
+        
+        .channel-details {
+            flex: 1;
+        }
+        
+        .channel-details .name {
+            font-weight: 500;
+            color: var(--white);
+            margin-bottom: 2px;
+        }
+        
+        .channel-details .category {
+            font-size: 0.75rem;
+            color: var(--gray-400);
+        }
+        
+        .status-badge {
+            padding: 4px 8px;
+            border-radius: var(--radius-sm);
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        
+        .status-live {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+        }
+        
+        .loading-spinner {
+            display: none;
+            text-align: center;
+            padding: var(--spacing-2xl);
+            color: var(--gray-400);
+        }
+        
+        .loading-spinner.active {
+            display: block;
+        }
+        
+        .error-message {
+            display: none;
+            padding: var(--spacing-lg);
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            border-radius: var(--radius-md);
+            color: #ef4444;
+            margin-top: var(--spacing-lg);
+        }
+        
+        .error-message.active {
+            display: block;
+        }
+        
+        .demo-disclaimer {
+            margin-top: var(--spacing-2xl);
+            padding: var(--spacing-xl);
+            background: var(--gray-900);
+            border-radius: var(--radius-lg);
+            border-left: 4px solid var(--primary);
+        }
+        
+        @media (max-width: 968px) {
+            .demo-container {
+                grid-template-columns: 1fr;
+            }
+            
+            .channels-list {
+                max-height: 400px;
+            }
+        }
+    </style>
+</head>
+<body>
+   <!-- Navigation -->
+    <nav class="navbar" id="navbar">
+        <div class="container">
+            <div class="nav-content">
+                <div class="logo">
+                    <img src="../images/logo.png" alt="NeXtv Logo" width="32" height="32" style="border-radius: 8px;">
+                    <span class="logo-text">NeXtv</span>
+                </div>
+                <ul class="nav-links" id="navLinks">
+                    <li><a href="../index.html#features">Features</a></li>
+                    <li><a href="../index.html#platforms">Platforms</a></li>
+                    <li><a href="../index.html#pricing">Pricing</a></li>
+                    <li><a href="../index.html#faq">FAQ</a></li>
+                    <li><a href="download.html">Download</a></li>
+                    <li><a href="demo.html">Demo</a></li>
+                </ul>
+                <div class="nav-actions">
+                    <a href="download.html" class="btn-secondary">Download</a>
+                    <button class="menu-toggle" id="menuToggle" aria-label="Toggle menu">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Demo Page Content -->
+    <section class="demo-page">
+        <div class="container">
+            <div class="demo-header">
+                <span class="section-tag">Try it Now</span>
+                <h1 class="section-title">NeXtv Demo</h1>
+                <p class="section-description">
+                    Experience our beautiful IPTV player with live channels. Click any channel below to start watching.
+                </p>
+            </div>
+
+            <div class="demo-container">
+                <!-- Channels List Sidebar -->
+                <div class="channels-list">
+                    <h3>📺 Live Channels</h3>
+                    <div id="channelsList"></div>
+                    <div class="loading-spinner active" id="loadingSpinner">
+                        <div style="font-size: 2rem;">⏳</div>
+                        <p>Loading channels...</p>
+                    </div>
+                </div>
+
+                <!-- Player Section -->
+                <div>
+                    <div class="player-section">
+                        <video id="videoPlayer" controls></video>
+                        <div class="player-info">
+                            <div class="channel-name" id="currentChannelName">Select a channel to start</div>
+                            <div class="channel-category" id="currentChannelCategory">Browse channels on the left</div>
+                        </div>
+                    </div>
+                    
+                    <div class="error-message" id="errorMessage"></div>
+                    
+                    <div class="demo-disclaimer">
+                        <h3 style="margin-bottom: var(--spacing-md);">ℹ️  About This Demo</h3>
+                        <p style="color: var(--gray-400); line-height: 1.6;">
+                            This demo uses <strong>free, legal public broadcast channels</strong> to showcase NeXtv's beautiful interface and smooth playback. 
+                            The actual app supports your own IPTV provider's content with thousands of channels, movies, series, and catch-up TV.
+                        </p>
+                        <p style="color: var(--gray-400); line-height: 1.6; margin-top: var(--spacing-md);">
+                            <strong>Note:</strong> Some channels may not be available in your region due to geo-restrictions. This is a limitation of the demo content, not our app.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-col">
+                    <div class="footer-logo">
+                        <img src="../images/logo.png" alt="NeXtv Logo" width="32" height="32" style="border-radius: 8px;">
+                        <span>NeXtv</span>
+                    </div>
+                    <p class="footer-description">
+                        Modern IPTV player for all your devices.
+                    </p>
+                    <div class="social-links">
+                        <a href="#" aria-label="Twitter"><svg width="20" height="20" fill="currentColor"><path d="M6.29 18.25c7.55 0 11.67-6.25 11.67-11.67v-.53c.8-.59 1.49-1.3 2.04-2.13-.75.33-1.54.55-2.36.65a4.12 4.12 0 0 0 1.8-2.27c-.8.48-1.68.81-2.6 1a4.1 4.1 0 0 0-7 3.74 11.65 11.65 0 0 1-8.45-4.3 4.1 4.1 0 0 0 1.27 5.49A4.05 4.05 0 0 1 .8 7.7v.05a4.1 4.1 0 0 0 3.3 4.03 4.1 4.1 0 0 1-1.86.07 4.1 4.1 0 0 0 3.83 2.85A8.23 8.23 0 0 1 0 16.4a11.62 11.62 0 0 0 6.29 1.84"/></svg></a>
+                        <a href="#" aria-label="Facebook"><svg width="20" height="20" fill="currentColor"><path d="M9.5 3H12.5V0H9.5C7.57 0 6 1.57 6 3.5V6H3V9H6V19H9V9H12L12.5 6H9V3.5C9 3.22 9.22 3 9.5 3Z"/></svg></a>
+                    </div>
+                </div>
+                
+                <div class="footer-col">
+                    <h4>Quick Links</h4>
+                    <ul>
+                        <li><a href="../index.html">Home</a></li>
+                        <li><a href="../index.html#features">Features</a></li>
+                        <li><a href="../index.html#pricing">Pricing</a></li>
+                        <li><a href="download.html">Download</a></li>
+                        <li><a href="demo.html">Demo</a></li>
+                    </ul>
+                </div>
+                
+                <div class="footer-col">
+                    <h4>Legal</h4>
+                    <ul>
+                        <li><a href="../../PRIVACY_POLICY.md">Privacy Policy</a></li>
+                        <li><a href="../../TERMS_OF_SERVICE.md">Terms of Service</a></li>
+                        <li><a href="../../LEGAL_DISCLAIMER.md">Legal Disclaimer</a></li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="footer-bottom">
+                <p>&copy; 2026 NeXtv. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="../js/main.js"></script>
+    <script>
+        // Lista de canales públicos y legales para demo
+        const demoChannels = [
+            {
+                name: "NASA TV",
+                url: "https://ntv1.akamaized.net/hls/live/2014075/NASA-NTV1-HLS/master.m3u8",
+                category: "Education",
+                logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e5/NASA_logo.svg/200px-NASA_logo.svg.png"
+            },
+            {
+                name: "France 24 (English)",
+                url: "https://cdn.klowdtv.net/803B48A/n1.klowdtv.net/live1/france24_720p/playlist.m3u8",
+                category: "News",
+                logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/France24.svg/200px-France24.svg.png"
+            },
+            {
+                name: "Bloomberg TV",
+                url: "https://bloomberg.com/media-manifest/streams/us.m3u8",
+                category: "Business",
+                logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/5/56/Bloomberg_Television_logo.svg/200px-Bloomberg_Television_logo.svg.png"
+            },
+            {
+                name: "Al Jazeera English",
+                url: "https://live-hls-web-aje.getaj.net/AJE/index.m3u8",
+                category: "News",
+                logo: "https://upload.wikimedia.org/wikipedia/en/thumb/f/f2/Aljazeera_eng.svg/200px-Aljazeera_eng.svg.png"
+            },
+            {
+                name: "Red Bull TV",
+                url: "https://rbmn-live.akamaized.net/hls/live/590964/BoRB-AT/master.m3u8",
+                category: "Sports",
+                logo: "https://i.imgur.com/7kuEDIV.png"
+            },
+            {
+                name: "RT Documentary",
+                url: "https://rt-rtd.rttv.com/live/rtdoc/playlist.m3u8",
+                category: "Documentary",
+                logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a0/Russia-today-logo.svg/200px-Russia-today-logo.svg.png"
+            },
+            {
+                name: "Fashion TV",
+                url: "https://fashiontv-fashiontv-5-nl.samsung.wurl.tv/playlist.m3u8",
+                category: "Fashion",
+                logo: "https://i.imgur.com/jKrbONf.png"
+            },
+            {
+                name: "BBC News",
+                url: "https://vs-cmaf-pushb-uk-live.akamaized.net/x=4/i=urn:bbc:pips:service:bbc_news_channel_hd/iptv_hd_abr_v1.mpd",
+                category: "News",
+                logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/6/62/BBC_News_2019.svg/200px-BBC_News_2019.svg.png"
+            },
+            {
+                name: "Tastemade",
+                url: "https://tastemade-es8intl-roku.amagi.tv/playlist.m3u8",
+                category: "Food",
+                logo: "https://i.imgur.com/8s6aRwP.png"
+            },
+            {
+                name: "Global Fashion Channel",
+                url: "https://gfcomnimedia-f.akamaihd.net/i/gfceurope_adapt@1396/master.m3u8",
+                category: "Fashion",
+                logo: "https://i.imgur.com/s6d8myG.png"
+            }
+        ];
+
+        let hls;
+        let currentChannel = null;
+
+        // Renderizar lista de canales
+        function renderChannels() {
+            const channelsList = document.getElementById('channelsList');
+            const loadingSpinner = document.getElementById('loadingSpinner');
+            
+            channelsList.innerHTML = demoChannels.map((channel, index) => `
+                <div class="channel-item" data-index="${index}" onclick="playChannel(${index})">
+                    <img src="${channel.logo}" alt="${channel.name}" class="channel-logo" 
+                         onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2248%22 height=%2248%22%3E%3Crect fill=%22%23374151%22 width=%2248%22 height=%2248%22/%3E%3Ctext x=%2224%22 y=%2230%22 text-anchor=%22middle%22 fill=%22%23fff%22 font-size=%2220%22%3E📺%3C/text%3E%3C/svg%3E'">
+                    <div class="channel-details">
+                        <div class="name">${channel.name}</div>
+                        <div class="category">${channel.category}</div>
+                    </div>
+                    <span class="status-badge status-live">LIVE</span>
+                </div>
+            `).join('');
+            
+            loadingSpinner.classList.remove('active');
+        }
+
+        // Reproducir canal
+        async function playChannel(index) {
+            const channel = demoChannels[index];
+            currentChannel = index;
+            
+            // Actualizar UI
+            document.querySelectorAll('.channel-item').forEach((item, i) => {
+                item.classList.toggle('active', i === index);
+            });
+            
+            document.getElementById('currentChannelName').textContent = channel.name;
+            document.getElementById('currentChannelCategory').textContent = channel.category;
+            document.getElementById('errorMessage').classList.remove('active');
+            
+            const video = document.getElementById('videoPlayer');
+            
+            try {
+                // Limpiar player anterior
+                if (hls) {
+                    hls.destroy();
+                }
+                
+                // Si es HLS, usar HLS.js
+                if (channel.url.includes('.m3u8')) {
+                    if (Hls.isSupported()) {
+                        hls = new Hls({
+                            enableWorker: true,
+                            lowLatencyMode: true,
+                            backBufferLength: 90
+                        });
+                        
+                        hls.loadSource(channel.url);
+                        hls.attachMedia(video);
+                        
+                        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                            video.play().catch(e => {
+                                console.log('Autoplay prevented:', e);
+                                showError('Click the play button to start watching');
+                            });
+                        });
+                        
+                        hls.on(Hls.Events.ERROR, (event, data) => {
+                            if (data.fatal) {
+                                switch(data.type) {
+                                    case Hls.ErrorTypes.NETWORK_ERROR:
+                                        showError('Network error - Channel may be geo-restricted or temporarily unavailable');
+                                        break;
+                                    case Hls.ErrorTypes.MEDIA_ERROR:
+                                        showError('Media error - Trying to recover...');
+                                        hls.recoverMediaError();
+                                        break;
+                                    default:
+                                        showError('Fatal error - Please try another channel');
+                                        break;
+                                }
+                            }
+                        });
+                    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                        // Safari nativo
+                        video.src = channel.url;
+                        video.play().catch(e => {
+                            console.log('Autoplay prevented:', e);
+                        });
+                    }
+                } else {
+                    // MP4 u otro formato directo
+                    video.src = channel.url;
+                    video.play().catch(e => {
+                        console.log('Autoplay prevented:', e);
+                    });
+                }
+            } catch (error) {
+                console.error('Error playing channel:', error);
+                showError('Failed to load channel. Please try another one.');
+            }
+        }
+
+        function showError(message) {
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.textContent = message;
+            errorDiv.classList.add('active');
+            
+            setTimeout(() => {
+                errorDiv.classList.remove('active');
+            }, 5000);
+        }
+
+        // Inicializar al cargar la página
+        document.addEventListener('DOMContentLoaded', () => {
+            renderChannels();
+            
+            // Reproducir primer canal automáticamente (opcional)
+            // playChannel(0);
+        });
+    </script>
+</body>
+</html>
