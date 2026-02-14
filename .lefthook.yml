@@ -1,0 +1,53 @@
+# Lefthook Configuration for NexTV App
+# Git hooks automation for code quality and security
+# Install: brew install lefthook
+# Setup: lefthook install
+
+pre-commit:
+  parallel: true
+  commands:
+    # Format code
+    format:
+      glob: "*.dart"
+      run: dart format {staged_files}
+      stage_fixed: true
+    
+    # Analyze code
+    analyze:
+      run: flutter analyze --fatal-infos
+      
+    # Check for secrets/credentials
+    secrets-check:
+      run: |
+        if command -v trufflehog &> /dev/null; then
+          trufflehog filesystem {staged_files} --no-update
+        else
+          echo "⚠️  TruffleHog not installed. Run: brew install trufflesecurity/trufflehog/trufflehog"
+        fi
+
+pre-push:
+  parallel: false
+  commands:
+    # Run tests before push
+    test:
+      run: flutter test
+      
+    # Security audit
+    audit:
+      run: |
+        echo "🔍 Running security audit..."
+        flutter pub audit || echo "⚠️  Some vulnerabilities detected"
+
+commit-msg:
+  commands:
+    # Validate commit message format
+    message-format:
+      run: |
+        commit_msg=$(cat {1})
+        if ! echo "$commit_msg" | grep -qE "^(feat|fix|docs|style|refactor|perf|test|chore|revert)(\(.+\))?: .{1,}$"; then
+          echo "❌ Invalid commit message format!"
+          echo "Use: <type>(<scope>): <subject>"
+          echo "Types: feat, fix, docs, style, refactor, perf, test, chore, revert"
+          echo "Example: feat(player): add live TV indicator"
+          exit 1
+        fi

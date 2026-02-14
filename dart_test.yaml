@@ -1,0 +1,21 @@
+# Test Configuration for Flutter
+# Run with: flutter test
+
+# Enable test randomization
+# This helps find tests that depend on execution order
+--test-randomize-ordering-seed random
+
+# Reporter formats
+--reporter=expanded
+
+# Enable coverage
+--coverage
+
+# Concurrency
+--concurrency=4
+
+# Exclude generated files from coverage
+--coverage-package=nextv_app
+
+# Platform
+--platform=vm
