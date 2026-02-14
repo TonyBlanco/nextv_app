@@ -1,0 +1,59 @@
+{
+  // === Dart / Flutter ===
+  "dart.flutterSdkPath": null,
+  "dart.lineLength": 120,
+  "dart.previewFlutterUiGuides": true,
+  "dart.previewFlutterUiGuidesCustomTracking": true,
+  "dart.closingLabels": true,
+  "dart.debugExternalPackageLibraries": false,
+  "dart.debugSdkLibraries": false,
+  // === Editor ===
+  "editor.formatOnSave": true,
+  "editor.codeActionsOnSave": {
+    "source.fixAll": "explicit",
+    "source.organizeImports": "explicit"
+  },
+  "editor.rulers": [
+    120
+  ],
+  "editor.tabSize": 2,
+  "editor.insertSpaces": true,
+  "editor.bracketPairColorization.enabled": true,
+  "editor.guides.bracketPairs": "active",
+  // === Files ===
+  "files.trimTrailingWhitespace": true,
+  "files.insertFinalNewline": true,
+  "files.exclude": {
+    "**/.dart_tool": true,
+    "**/.pub": true,
+    "**/build": true,
+    "**/*.iml": true,
+    "**/.DS_Store": true,
+    "**/Thumbs.db": true
+  },
+  "files.watcherExclude": {
+    "**/build/**": true,
+    "**/.dart_tool/**": true,
+    "**/node_modules/**": true
+  },
+  // === Search ===
+  "search.exclude": {
+    "**/build": true,
+    "**/.dart_tool": true,
+    "**/node_modules": true,
+    "**/*.g.dart": true,
+    "**/*.freezed.dart": true
+  },
+  // === Language specifics ===
+  "[dart]": {
+    "editor.defaultFormatter": "Dart-Code.dart-code",
+    "editor.formatOnSave": true,
+    "editor.selectionHighlight": false,
+    "editor.suggestSelection": "first",
+    "editor.tabCompletion": "onlySnippets",
+    "editor.wordBasedSuggestions": "off"
+  },
+  // === Git ===
+  "git.enableSmartCommit": true,
+  "git.autofetch": true
+}

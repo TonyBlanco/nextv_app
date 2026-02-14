@@ -10,10 +10,12 @@ flutter_*.log
 
 # IDE
 .idea/
-.vscode/
 *.iml
 *.ipr
 *.iws
+# Keep .vscode/ tracked for shared settings (settings.json, launch.json, extensions.json)
+.vscode/*.log
+.vscode/.ropeproject
 
 # OS
 .DS_Store

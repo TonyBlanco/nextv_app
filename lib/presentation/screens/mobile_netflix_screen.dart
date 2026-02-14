@@ -10,6 +10,8 @@ import '../../core/services/xtream_api_service.dart';
 import '../widgets/nextv_logo.dart';
 import '../widgets/favorite_button.dart';
 import '../../core/providers/favorites_provider.dart';
+import '../../core/providers/watch_providers.dart';
+import '../../core/models/watchlist_item.dart';
 import 'player_screen.dart';
 import 'settings_screen.dart';
 import 'mobile_series_detail_screen.dart';
@@ -30,6 +32,9 @@ class _MobileNetflixScreenState extends ConsumerState<MobileNetflixScreen> {
   String? _selectedLiveCategory;
   String? _selectedVODCategory;
   String? _selectedSeriesCategory;
+
+  // Watchlist ("Mi Lista") — special pseudo-category for movies & series
+  static const String _miListaId = '__mi_lista__';
 
   // Search for Live TV channels (TiviMate-style)
   final TextEditingController _liveSearchController = TextEditingController();
@@ -512,24 +517,25 @@ class _MobileNetflixScreenState extends ConsumerState<MobileNetflixScreen> {
           return _buildEmptyState('No movie categories available');
         }
 
-        // Auto-select first category
+        // Auto-select Mi Lista if it has items, otherwise first category
         if (_selectedVODCategory == null && categories.isNotEmpty) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
+            final watchlist = ref.read(watchlistProvider);
+            final hasMovies = watchlist.any((w) => w.type == 'movie');
             setState(() {
-              _selectedVODCategory = categories.first.categoryId;
+              _selectedVODCategory =
+                  hasMovies ? _miListaId : categories.first.categoryId;
             });
           });
         }
 
         return Column(
           children: [
-            _buildCategoryChips(
-              categories: categories,
-              selectedId: _selectedVODCategory,
-              onSelect: (id) => setState(() => _selectedVODCategory = id),
-            ),
+            _buildMovieCategoryChips(categories),
             Expanded(
-              child: _buildMoviesGrid(_selectedVODCategory),
+              child: _selectedVODCategory == _miListaId
+                  ? _buildWatchlistGrid('movie')
+                  : _buildMoviesGrid(_selectedVODCategory),
             ),
           ],
         );
@@ -538,6 +544,82 @@ class _MobileNetflixScreenState extends ConsumerState<MobileNetflixScreen> {
         child: CircularProgressIndicator(color: NextvColors.accent),
       ),
       error: (error, stack) => _buildEmptyState('Error loading categories'),
+    );
+  }
+
+  /// Category chips for Movies with "Mi Lista" as first chip
+  Widget _buildMovieCategoryChips(List<dynamic> categories) {
+    final watchlist = ref.watch(watchlistProvider);
+    final movieCount = watchlist.where((w) => w.type == 'movie').length;
+
+    return Container(
+      height: 50,
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        itemCount: categories.length + 1, // +1 for Mi Lista
+        itemBuilder: (context, index) {
+          // First chip = Mi Lista
+          if (index == 0) {
+            final isSelected = _selectedVODCategory == _miListaId;
+            return Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: ChoiceChip(
+                avatar: Icon(
+                  Icons.bookmark,
+                  size: 16,
+                  color: isSelected ? Colors.black : NextvColors.accent,
+                ),
+                label:
+                    Text('Mi Lista${movieCount > 0 ? " ($movieCount)" : ""}'),
+                selected: isSelected,
+                onSelected: (selected) {
+                  if (selected) {
+                    setState(() => _selectedVODCategory = _miListaId);
+                  }
+                },
+                selectedColor: NextvColors.accent,
+                backgroundColor: NextvColors.surface,
+                labelStyle: TextStyle(
+                  color: isSelected ? Colors.black : Colors.white70,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                  fontSize: 14,
+                ),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              ),
+            );
+          }
+
+          // Regular categories (offset by 1)
+          final category = categories[index - 1];
+          final id = category.categoryId;
+          final name = category.categoryName;
+          final isSelected = _selectedVODCategory == id;
+
+          return Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: ChoiceChip(
+              label: Text(name),
+              selected: isSelected,
+              onSelected: (selected) {
+                if (selected) {
+                  setState(() => _selectedVODCategory = id);
+                }
+              },
+              selectedColor: NextvColors.accent,
+              backgroundColor: NextvColors.surface,
+              labelStyle: TextStyle(
+                color: isSelected ? Colors.black : Colors.white70,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                fontSize: 14,
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            ),
+          );
+        },
+      ),
     );
   }
 
@@ -582,6 +664,9 @@ class _MobileNetflixScreenState extends ConsumerState<MobileNetflixScreen> {
   }
 
   Widget _buildMovieCard(VODStream movie) {
+    final itemId = 'vod_${movie.streamId}';
+    final isInList = ref.watch(isInWatchlistProvider(itemId));
+
     return Card(
       color: NextvColors.surface,
       elevation: 2,
@@ -591,51 +676,64 @@ class _MobileNetflixScreenState extends ConsumerState<MobileNetflixScreen> {
       child: InkWell(
         onTap: () => _playMovie(movie),
         borderRadius: BorderRadius.circular(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+        child: Stack(
           children: [
-            // Poster
-            Expanded(
-              child: ClipRRect(
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(12),
-                ),
-                child: movie.streamIcon.isNotEmpty
-                    ? Image.network(
-                        movie.streamIcon,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => Container(
-                          color: NextvColors.background,
-                          child: const Icon(
-                            Icons.movie,
-                            color: Colors.white24,
-                            size: 48,
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Poster
+                Expanded(
+                  child: ClipRRect(
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(12),
+                    ),
+                    child: movie.streamIcon.isNotEmpty
+                        ? Image.network(
+                            movie.streamIcon,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => Container(
+                              color: NextvColors.background,
+                              child: const Icon(
+                                Icons.movie,
+                                color: Colors.white24,
+                                size: 48,
+                              ),
+                            ),
+                          )
+                        : Container(
+                            color: NextvColors.background,
+                            child: const Icon(
+                              Icons.movie,
+                              color: Colors.white24,
+                              size: 48,
+                            ),
                           ),
-                        ),
-                      )
-                    : Container(
-                        color: NextvColors.background,
-                        child: const Icon(
-                          Icons.movie,
-                          color: Colors.white24,
-                          size: 48,
-                        ),
-                      ),
-              ),
-            ),
-            // Title
-            Padding(
-              padding: const EdgeInsets.all(8),
-              child: Text(
-                movie.name,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
+                  ),
                 ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
+                // Title
+                Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: Text(
+                    movie.name,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ],
+            ),
+            // Bookmark button (top-right)
+            Positioned(
+              top: 4,
+              right: 4,
+              child: _buildWatchlistButton(
+                isInList: isInList,
+                onToggle: () => _toggleMovieWatchlist(movie),
               ),
             ),
           ],
@@ -654,24 +752,25 @@ class _MobileNetflixScreenState extends ConsumerState<MobileNetflixScreen> {
           return _buildEmptyState('No series categories available');
         }
 
-        // Auto-select first category
+        // Auto-select Mi Lista if it has items, otherwise first category
         if (_selectedSeriesCategory == null && categories.isNotEmpty) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
+            final watchlist = ref.read(watchlistProvider);
+            final hasSeries = watchlist.any((w) => w.type == 'series');
             setState(() {
-              _selectedSeriesCategory = categories.first.categoryId;
+              _selectedSeriesCategory =
+                  hasSeries ? _miListaId : categories.first.categoryId;
             });
           });
         }
 
         return Column(
           children: [
-            _buildCategoryChips(
-              categories: categories,
-              selectedId: _selectedSeriesCategory,
-              onSelect: (id) => setState(() => _selectedSeriesCategory = id),
-            ),
+            _buildSeriesCategoryChips(categories),
             Expanded(
-              child: _buildSeriesGrid(_selectedSeriesCategory),
+              child: _selectedSeriesCategory == _miListaId
+                  ? _buildWatchlistGrid('series')
+                  : _buildSeriesGrid(_selectedSeriesCategory),
             ),
           ],
         );
@@ -681,6 +780,82 @@ class _MobileNetflixScreenState extends ConsumerState<MobileNetflixScreen> {
       ),
       error: (error, stack) =>
           _buildEmptyState('Error loading series categories'),
+    );
+  }
+
+  /// Category chips for Series with "Mi Lista" as first chip
+  Widget _buildSeriesCategoryChips(List<dynamic> categories) {
+    final watchlist = ref.watch(watchlistProvider);
+    final seriesCount = watchlist.where((w) => w.type == 'series').length;
+
+    return Container(
+      height: 50,
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        itemCount: categories.length + 1, // +1 for Mi Lista
+        itemBuilder: (context, index) {
+          // First chip = Mi Lista
+          if (index == 0) {
+            final isSelected = _selectedSeriesCategory == _miListaId;
+            return Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: ChoiceChip(
+                avatar: Icon(
+                  Icons.bookmark,
+                  size: 16,
+                  color: isSelected ? Colors.black : NextvColors.accent,
+                ),
+                label:
+                    Text('Mi Lista${seriesCount > 0 ? " ($seriesCount)" : ""}'),
+                selected: isSelected,
+                onSelected: (selected) {
+                  if (selected) {
+                    setState(() => _selectedSeriesCategory = _miListaId);
+                  }
+                },
+                selectedColor: NextvColors.accent,
+                backgroundColor: NextvColors.surface,
+                labelStyle: TextStyle(
+                  color: isSelected ? Colors.black : Colors.white70,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                  fontSize: 14,
+                ),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              ),
+            );
+          }
+
+          // Regular categories (offset by 1)
+          final category = categories[index - 1];
+          final id = category.categoryId;
+          final name = category.categoryName;
+          final isSelected = _selectedSeriesCategory == id;
+
+          return Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: ChoiceChip(
+              label: Text(name),
+              selected: isSelected,
+              onSelected: (selected) {
+                if (selected) {
+                  setState(() => _selectedSeriesCategory = id);
+                }
+              },
+              selectedColor: NextvColors.accent,
+              backgroundColor: NextvColors.surface,
+              labelStyle: TextStyle(
+                color: isSelected ? Colors.black : Colors.white70,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                fontSize: 14,
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            ),
+          );
+        },
+      ),
     );
   }
 
@@ -725,6 +900,9 @@ class _MobileNetflixScreenState extends ConsumerState<MobileNetflixScreen> {
   }
 
   Widget _buildSeriesCard(SeriesItem series) {
+    final itemId = 'series_${series.seriesId}';
+    final isInList = ref.watch(isInWatchlistProvider(itemId));
+
     return Card(
       color: NextvColors.surface,
       elevation: 2,
@@ -741,60 +919,288 @@ class _MobileNetflixScreenState extends ConsumerState<MobileNetflixScreen> {
           );
         },
         borderRadius: BorderRadius.circular(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+        child: Stack(
           children: [
-            // Series poster
-            Expanded(
-              child: ClipRRect(
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(12),
-                ),
-                child: series.cover.isNotEmpty
-                    ? CachedNetworkImage(
-                        imageUrl: series.cover,
-                        fit: BoxFit.cover,
-                        placeholder: (context, url) => Container(
-                          color: NextvColors.background,
-                          child: const Center(
-                            child: SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: NextvColors.accent,
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Series poster
+                Expanded(
+                  child: ClipRRect(
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(12),
+                    ),
+                    child: series.cover.isNotEmpty
+                        ? CachedNetworkImage(
+                            imageUrl: series.cover,
+                            fit: BoxFit.cover,
+                            placeholder: (context, url) => Container(
+                              color: NextvColors.background,
+                              child: const Center(
+                                child: SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: NextvColors.accent,
+                                  ),
+                                ),
                               ),
                             ),
+                            errorWidget: (_, __, ___) => Container(
+                              color: NextvColors.background,
+                              child: const Icon(
+                                Icons.tv,
+                                color: Colors.white24,
+                                size: 48,
+                              ),
+                            ),
+                            memCacheWidth: 200,
+                            maxWidthDiskCache: 200,
+                          )
+                        : Container(
+                            color: NextvColors.background,
+                            child: const Icon(
+                              Icons.tv,
+                              color: Colors.white24,
+                              size: 48,
+                            ),
                           ),
+                  ),
+                ),
+                // Title + rating
+                Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: Column(
+                    children: [
+                      Text(
+                        series.name,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
                         ),
-                        errorWidget: (_, __, ___) => Container(
-                          color: NextvColors.background,
-                          child: const Icon(
-                            Icons.tv,
-                            color: Colors.white24,
-                            size: 48,
-                          ),
-                        ),
-                        memCacheWidth: 200,
-                        maxWidthDiskCache: 200,
-                      )
-                    : Container(
-                        color: NextvColors.background,
-                        child: const Icon(
-                          Icons.tv,
-                          color: Colors.white24,
-                          size: 48,
-                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.center,
                       ),
+                      if (series.rating.isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.star,
+                                color: Colors.amber, size: 12),
+                            const SizedBox(width: 2),
+                            Text(
+                              series.rating,
+                              style: const TextStyle(
+                                color: Colors.white54,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            // Bookmark button (top-right)
+            Positioned(
+              top: 4,
+              right: 4,
+              child: _buildWatchlistButton(
+                isInList: isInList,
+                onToggle: () => _toggleSeriesWatchlist(series),
               ),
             ),
-            // Title + rating
-            Padding(
-              padding: const EdgeInsets.all(8),
-              child: Column(
-                children: [
-                  Text(
-                    series.name,
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ========== WATCHLIST HELPERS ==========
+
+  /// Reusable bookmark button for movie/series cards
+  Widget _buildWatchlistButton({
+    required bool isInList,
+    required VoidCallback onToggle,
+  }) {
+    return GestureDetector(
+      onTap: onToggle,
+      child: Container(
+        width: 32,
+        height: 32,
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.6),
+          shape: BoxShape.circle,
+        ),
+        child: Icon(
+          isInList ? Icons.bookmark : Icons.bookmark_border,
+          color: isInList ? NextvColors.accent : Colors.white70,
+          size: 18,
+        ),
+      ),
+    );
+  }
+
+  /// Toggle a movie in/out of the watchlist
+  void _toggleMovieWatchlist(VODStream movie) {
+    final service = ref.read(watchlistServiceProvider);
+    final itemId = 'vod_${movie.streamId}';
+    final item = WatchlistItem(
+      id: itemId,
+      type: 'movie',
+      title: movie.name,
+      imageUrl: movie.streamIcon,
+      playbackUrl: '',
+      addedAt: DateTime.now(),
+      streamId: movie.streamId,
+    );
+    service.toggle(item);
+    ref.invalidate(isInWatchlistProvider(itemId));
+    ref.invalidate(watchlistProvider);
+  }
+
+  /// Toggle a series in/out of the watchlist
+  void _toggleSeriesWatchlist(SeriesItem series) {
+    final service = ref.read(watchlistServiceProvider);
+    final itemId = 'series_${series.seriesId}';
+    final item = WatchlistItem(
+      id: itemId,
+      type: 'series',
+      title: series.name,
+      imageUrl: series.cover,
+      playbackUrl: '',
+      addedAt: DateTime.now(),
+      streamId: series.seriesId,
+    );
+    service.toggle(item);
+    ref.invalidate(isInWatchlistProvider(itemId));
+    ref.invalidate(watchlistProvider);
+  }
+
+  /// Grid showing watchlist items (filtered by type: 'movie' or 'series')
+  Widget _buildWatchlistGrid(String type) {
+    final watchlist = ref.watch(watchlistProvider);
+    final items = watchlist.where((w) => w.type == type).toList();
+
+    if (items.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.bookmark_border, size: 64, color: Colors.white24),
+            const SizedBox(height: 16),
+            const Text(
+              'Tu lista está vacía',
+              style: TextStyle(color: Colors.white, fontSize: 18),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              type == 'movie'
+                  ? 'Toca el 🔖 en cualquier película para guardarla'
+                  : 'Toca el 🔖 en cualquier serie para guardarla',
+              style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.5), fontSize: 14),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      );
+    }
+
+    return GridView.builder(
+      padding: const EdgeInsets.all(16),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        childAspectRatio: 0.7,
+        crossAxisSpacing: 12,
+        mainAxisSpacing: 12,
+      ),
+      itemCount: items.length,
+      itemBuilder: (context, index) {
+        return _buildWatchlistCard(items[index]);
+      },
+    );
+  }
+
+  /// Card for a watchlist item (movie or series) — tappable + removable
+  Widget _buildWatchlistCard(WatchlistItem item) {
+    return Card(
+      color: NextvColors.surface,
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: InkWell(
+        onTap: () {
+          if (item.type == 'movie') {
+            // Play movie directly
+            _playWatchlistMovie(item);
+          } else {
+            // Navigate to series detail — need to create a minimal SeriesItem
+            _openWatchlistSeries(item);
+          }
+        },
+        borderRadius: BorderRadius.circular(12),
+        child: Stack(
+          children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Poster
+                Expanded(
+                  child: ClipRRect(
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(12),
+                    ),
+                    child: item.imageUrl.isNotEmpty
+                        ? CachedNetworkImage(
+                            imageUrl: item.imageUrl,
+                            fit: BoxFit.cover,
+                            placeholder: (context, url) => Container(
+                              color: NextvColors.background,
+                              child: const Center(
+                                child: SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: NextvColors.accent,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            errorWidget: (_, __, ___) => Container(
+                              color: NextvColors.background,
+                              child: Icon(
+                                item.type == 'movie' ? Icons.movie : Icons.tv,
+                                color: Colors.white24,
+                                size: 48,
+                              ),
+                            ),
+                            memCacheWidth: 200,
+                            maxWidthDiskCache: 200,
+                          )
+                        : Container(
+                            color: NextvColors.background,
+                            child: Icon(
+                              item.type == 'movie' ? Icons.movie : Icons.tv,
+                              color: Colors.white24,
+                              size: 48,
+                            ),
+                          ),
+                  ),
+                ),
+                // Title
+                Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: Text(
+                    item.title,
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 13,
@@ -804,28 +1210,82 @@ class _MobileNetflixScreenState extends ConsumerState<MobileNetflixScreen> {
                     overflow: TextOverflow.ellipsis,
                     textAlign: TextAlign.center,
                   ),
-                  if (series.rating.isNotEmpty) ...[
-                    const SizedBox(height: 4),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.star, color: Colors.amber, size: 12),
-                        const SizedBox(width: 2),
-                        Text(
-                          series.rating,
-                          style: const TextStyle(
-                            color: Colors.white54,
-                            fontSize: 11,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ],
+                ),
+              ],
+            ),
+            // Remove from watchlist button
+            Positioned(
+              top: 4,
+              right: 4,
+              child: _buildWatchlistButton(
+                isInList: true,
+                onToggle: () {
+                  final service = ref.read(watchlistServiceProvider);
+                  service.remove(item.id);
+                  ref.invalidate(isInWatchlistProvider(item.id));
+                  ref.invalidate(watchlistProvider);
+                },
               ),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  /// Play a movie from the watchlist
+  void _playWatchlistMovie(WatchlistItem item) {
+    final playlist = ref.read(activePlaylistProvider);
+    if (playlist == null) return;
+
+    final creds = playlist.toXtreamCredentials;
+    if (creds == null) return;
+
+    // Default to mp4 extension — the player will handle format fallback
+    final url =
+        '${creds.serverUrl}/movie/${creds.username}/${creds.password}/${item.streamId}.mp4';
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => PlayerScreen(
+          meta: PlayerMeta(
+            id: item.streamId.toString(),
+            type: 'movie',
+            title: item.title,
+            imageUrl: item.imageUrl,
+            streamId: item.streamId,
+          ),
+        ),
+        settings: RouteSettings(arguments: url),
+      ),
+    );
+  }
+
+  /// Open a series from the watchlist (create a minimal SeriesItem)
+  void _openWatchlistSeries(WatchlistItem item) {
+    final series = SeriesItem(
+      num: 0,
+      name: item.title,
+      seriesId: item.streamId,
+      cover: item.imageUrl,
+      plot: '',
+      cast: '',
+      director: '',
+      genre: '',
+      releaseDate: '',
+      lastModified: 0,
+      rating: '',
+      rating5based: '',
+      backdropPath: const [],
+      youtubeTrailer: '',
+      episodeRunTime: 0,
+      categoryId: '',
+    );
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => MobileSeriesDetailScreen(series: series),
       ),
     );
   }
