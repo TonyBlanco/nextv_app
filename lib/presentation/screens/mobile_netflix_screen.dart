@@ -10,6 +10,8 @@ import '../../core/services/xtream_api_service.dart';
 import '../widgets/nextv_logo.dart';
 import 'player_screen.dart';
 import 'settings_screen.dart';
+import 'mobile_series_detail_screen.dart';
+import 'mobile_catchup_screen.dart';
 
 /// Netflix-style mobile interface - MOBILE ONLY
 /// Clean, modern, no overflow errors, touch-optimized
@@ -395,12 +397,192 @@ class _MobileNetflixScreenState extends ConsumerState<MobileNetflixScreen> {
 
   // ========== SERIES TAB ==========
   Widget _buildSeriesTab() {
-    return _buildEmptyState('Series coming soon');
+    final categoriesAsync = ref.watch(seriesCategoriesProvider);
+
+    return categoriesAsync.when(
+      data: (categories) {
+        if (categories.isEmpty) {
+          return _buildEmptyState('No series categories available');
+        }
+
+        // Auto-select first category
+        if (_selectedSeriesCategory == null && categories.isNotEmpty) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            setState(() {
+              _selectedSeriesCategory = categories.first.categoryId;
+            });
+          });
+        }
+
+        return Column(
+          children: [
+            _buildCategoryChips(
+              categories: categories,
+              selectedId: _selectedSeriesCategory,
+              onSelect: (id) => setState(() => _selectedSeriesCategory = id),
+            ),
+            Expanded(
+              child: _buildSeriesGrid(_selectedSeriesCategory),
+            ),
+          ],
+        );
+      },
+      loading: () => const Center(
+        child: CircularProgressIndicator(color: NextvColors.accent),
+      ),
+      error: (error, stack) => _buildEmptyState('Error loading series categories'),
+    );
+  }
+
+  Widget _buildSeriesGrid(String? categoryId) {
+    if (categoryId == null) return const SizedBox();
+
+    final api = ref.watch(xtreamAPIProvider);
+
+    return FutureBuilder<List<SeriesItem>>(
+      future: api.getSeries(categoryId: categoryId),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(
+            child: CircularProgressIndicator(color: NextvColors.accent),
+          );
+        }
+
+        if (snapshot.hasError || !snapshot.hasData) {
+          return _buildEmptyState('Error loading series');
+        }
+
+        final seriesList = snapshot.data!;
+        if (seriesList.isEmpty) {
+          return _buildEmptyState('No series in this category');
+        }
+
+        return GridView.builder(
+          padding: const EdgeInsets.all(16),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            childAspectRatio: 0.7,
+            crossAxisSpacing: 12,
+            mainAxisSpacing: 12,
+          ),
+          itemCount: seriesList.length,
+          itemBuilder: (context, index) {
+            return _buildSeriesCard(seriesList[index]);
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildSeriesCard(SeriesItem series) {
+    return Card(
+      color: NextvColors.surface,
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: InkWell(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => MobileSeriesDetailScreen(series: series),
+            ),
+          );
+        },
+        borderRadius: BorderRadius.circular(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Series poster
+            Expanded(
+              child: ClipRRect(
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(12),
+                ),
+                child: series.cover.isNotEmpty
+                    ? CachedNetworkImage(
+                        imageUrl: series.cover,
+                        fit: BoxFit.cover,
+                        placeholder: (context, url) => Container(
+                          color: NextvColors.background,
+                          child: const Center(
+                            child: SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: NextvColors.accent,
+                              ),
+                            ),
+                          ),
+                        ),
+                        errorWidget: (_, __, ___) => Container(
+                          color: NextvColors.background,
+                          child: const Icon(
+                            Icons.tv,
+                            color: Colors.white24,
+                            size: 48,
+                          ),
+                        ),
+                        memCacheWidth: 200,
+                        maxWidthDiskCache: 200,
+                      )
+                    : Container(
+                        color: NextvColors.background,
+                        child: const Icon(
+                          Icons.tv,
+                          color: Colors.white24,
+                          size: 48,
+                        ),
+                      ),
+              ),
+            ),
+            // Title + rating
+            Padding(
+              padding: const EdgeInsets.all(8),
+              child: Column(
+                children: [
+                  Text(
+                    series.name,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                  ),
+                  if (series.rating.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.star, color: Colors.amber, size: 12),
+                        const SizedBox(width: 2),
+                        Text(
+                          series.rating,
+                          style: const TextStyle(
+                            color: Colors.white54,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   // ========== CATCH UP TAB ==========
   Widget _buildCatchUpTab() {
-    return _buildEmptyState('Catch Up coming soon');
+    return const MobileCatchUpScreen();
   }
 
   // ========== CATEGORY CHIPS ==========
